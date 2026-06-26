@@ -36,4 +36,33 @@ Using Prettier helps avoid small formatting conflicts during merges, so team mem
 
 ## Async handler utility
 
-- `src/utils/asyncHandler.js` wraps async route handlers so errors are passed to Express with `next(err)` instead of repeating `try/catch` in every handler.`}
+- `src/utils/asyncHandler.js` wraps async route handlers so errors are passed to Express with `next(err)` instead of repeating `try/catch` in every handler.
+
+## API error and response classes
+
+Using custom classes like `ApiError` and `ApiResponse` keeps responses consistent and easy to handle across the app.
+
+- `ApiError` centralizes error status codes and messages in one format.
+- `ApiResponse` standardizes successful responses with a code, payload, and message.
+
+Example:
+
+```js
+// error case
+if (!user) {
+    throw new ApiError(404, "User not found")
+}
+
+// success case
+return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            user,
+            "User fetched successfully"
+        )
+    )
+```
+
+This makes error handling and client responses predictable, easier to test, and simpler to extend later.}
