@@ -65,4 +65,47 @@ return res
     )
 ```
 
-This makes error handling and client responses predictable, easier to test, and simpler to extend later.}
+This makes error handling and client responses predictable, easier to test, and simpler to extend later.
+
+## Mongoose pipeline and pagination
+
+- `src/models/video.model.js` (lines 2 and 43) uses `mongoose-aggregate-paginate-v2`.
+- This plugin relies on MongoDB aggregation pipeline operations to build query stages and return paged results.
+- Pagination avoids loading all documents at once and returns a subset of results with page metadata.
+
+## Mongoose middleware hooks
+
+- `src/models/user.model.js` (line 59) uses a Mongoose pre-save hook:
+
+```js
+UserSchema.pre("save", async function (next) {
+  // run before saving the document
+  next()
+})
+```
+
+- Hooks let Mongoose run logic before/after actions like `save`, `remove`, `validate`, and more.
+
+## Custom instance methods in Mongoose documents
+
+- `src/models/user.model.js` defines document methods on `UserSchema.methods`.
+- Example syntax from the file:
+
+```js
+UserSchema.methods.isPasswordCorrect = async function (password) {
+  return bcrypt.compare(password, this.password)
+}
+
+UserSchema.methods.generateAccessToken = function () {
+  return jwt.sign(...)
+}
+```
+
+- Instance methods keep model-specific behavior close to the document data.
+
+## Access token and refresh token
+
+- `src/models/user.model.js` (lines 72-88) defines both tokens with `jsonwebtoken`.
+- Access token: short-lived JWT used for authenticated requests.
+- Refresh token: longer-lived JWT used to issue a new access token when the old one expires.
+- Storing these separately helps improve security and session management.}
