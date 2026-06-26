@@ -67,45 +67,50 @@ return res
 
 This makes error handling and client responses predictable, easier to test, and simpler to extend later.
 
-## Mongoose pipeline and pagination
+## Mongoose pipeline operation
 
-- `src/models/video.model.js` (lines 2 and 43) uses `mongoose-aggregate-paginate-v2`.
-- This plugin relies on MongoDB aggregation pipeline operations to build query stages and return paged results.
-- Pagination avoids loading all documents at once and returns a subset of results with page metadata.
+- A Mongoose pipeline uses MongoDB aggregation stages to transform and filter documents in a sequence.
+- This is useful for complex queries like grouping, projecting, sorting, or joining data.
+- In this project, `src/models/video.model.js` installs `mongoose-aggregate-paginate-v2`, which can build aggregation stages before paging results.
+
+## Mongoose pagination
+
+- Pagination splits large result sets into pages so the app only fetches a limited number of documents at once.
+- It improves performance and reduces memory use for list endpoints.
+- Here the project uses `mongoose-aggregate-paginate-v2` with the video model to return paged aggregation results.
 
 ## Mongoose middleware hooks
 
-- `src/models/user.model.js` (line 59) uses a Mongoose pre-save hook:
+- Mongoose hooks are functions that run before or after model operations like `save`, `validate`, or `remove`.
+- They let you add pre-processing or validation logic directly on the schema.
+- Smallest syntax example:
 
 ```js
 UserSchema.pre("save", async function (next) {
-  // run before saving the document
+  // runs before saving a user document
   next()
 })
 ```
 
-- Hooks let Mongoose run logic before/after actions like `save`, `remove`, `validate`, and more.
+- This project uses a pre-save hook in `src/models/user.model.js` to run logic before a user is saved.
 
 ## Custom instance methods in Mongoose documents
 
-- `src/models/user.model.js` defines document methods on `UserSchema.methods`.
-- Example syntax from the file:
+- Custom instance methods are functions defined on `schema.methods` and available on each document.
+- They keep model behavior close to the data, so you can call `user.isPasswordCorrect(...)` or `user.generateAccessToken()`.
+- Smallest syntax example:
 
 ```js
-UserSchema.methods.isPasswordCorrect = async function (password) {
-  return bcrypt.compare(password, this.password)
-}
-
-UserSchema.methods.generateAccessToken = function () {
-  return jwt.sign(...)
+UserSchema.methods.getFullName = function () {
+  return `${this.firstName} ${this.lastName}`
 }
 ```
 
-- Instance methods keep model-specific behavior close to the document data.
+- In the project, `src/models/user.model.js` defines methods like `isPasswordCorrect` and `generateAccessToken`.
 
 ## Access token and refresh token
 
-- `src/models/user.model.js` (lines 72-88) defines both tokens with `jsonwebtoken`.
-- Access token: short-lived JWT used for authenticated requests.
-- Refresh token: longer-lived JWT used to issue a new access token when the old one expires.
-- Storing these separately helps improve security and session management.}
+- Access token: a short-lived JWT used to authenticate API requests.
+- Refresh token: a longer-lived JWT used to request a new access token after the old one expires.
+- Keeping them separate improves security by limiting how long a leaked access token remains valid and allowing refreshes without forcing the user to log in again.
+- The project defines both in `src/models/user.model.js` with `jsonwebtoken`.}
