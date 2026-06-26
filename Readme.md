@@ -26,3 +26,14 @@ Using Prettier helps avoid small formatting conflicts during merges, so team mem
 > - reduces merge conflicts caused by formatting
 > - saves time on code review for style issues
 > - improves readability and maintainability
+
+## Middleware used
+
+- `cors` — allows requests from allowed origins, using `process.env.CORS_ORIGIN`
+- `express.static` — serves public assets from the `public/` folder
+- `express.json()` — parses JSON request bodies
+- `express.urlencoded({ extended: true })` — parses URL-encoded form data from forms
+
+## Async handler utility
+
+- `src/utils/asyncHandler.js` wraps async route handlers so errors are passed to Express with `next(err)` instead of repeating `try/catch` in every handler.`}
