@@ -172,3 +172,14 @@ Cloudinary URL
     ↓
 Database Storage
 ```
+<div style="overflow-x:auto">
+
+| Controller | Purpose | Logic Flow |
+|---|---|---|
+| `publishAVideo` | Upload and publish video | 1. Get title and description from request body <br> 2. Get video file and thumbnail from multer uploaded files <br> 3. Validate required fields <br> 4. Upload video and thumbnail to Cloudinary <br> 5. Create video document with uploaded URLs and user reference <br> 6. Save video in database <br> 7. Return created video using ApiResponse <br> 8. Throw ApiError if upload/database operation fails |
+| `getVideoById` | Get single video details | 1. Get videoId from params <br> 2. Find video by ID <br> 3. Populate required user details <br> 4. Validate video existence <br> 5. Return video details using ApiResponse |
+| `updateVideo` | Update video metadata | 1. Get videoId from params <br> 2. Get updated title/description from body <br> 3. Check video ownership <br> 4. Update video fields <br> 5. Return updated video |
+| `deleteVideo` | Delete video | 1. Get videoId <br> 2. Verify video ownership <br> 3. Delete video from database <br> 4. Remove related Cloudinary files if required <br> 5. Return success response |
+| `togglePublishStatus` | Toggle video visibility | 1. Get videoId <br> 2. Find video <br> 3. Reverse isPublished status <br> 4. Save changes <br> 5. Return updated status |
+
+</div>

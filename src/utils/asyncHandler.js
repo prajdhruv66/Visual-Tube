@@ -1,13 +1,14 @@
 // asyncHandler is used to wrap each async function into try/catch block or promise block so that it doesn't look messy
 
-const asyncHandler = (requestHandler)=>{
-    (req,res,next)=>{
-        Promise.resolve(requestHandler())
-        .catch((err)=>{next(err)})
-    }
-}
+const asyncHandler = (requestHandler) => {
+    return (req, res, next) => {
+        Promise.resolve(requestHandler(req, res, next)).catch((err) => {
+            next(err);
+        });
+    };
+};
 
-export {asyncHandler}
+export default asyncHandler;
 
 // const asyncHandler = (fn) => async (req,res,next) => {
 //     try {
