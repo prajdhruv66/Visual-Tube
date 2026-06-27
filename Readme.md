@@ -114,3 +114,61 @@ UserSchema.methods.getFullName = function () {
 - Refresh token: a longer-lived JWT used to request a new access token after the old one expires.
 - Keeping them separate improves security by limiting how long a leaked access token remains valid and allowing refreshes without forcing the user to log in again.
 - The project defines both in `src/models/user.model.js` with `jsonwebtoken`.}
+
+## File Upload Flow
+
+This project uses **Multer** for handling file uploads and **Cloudinary** for cloud storage.
+
+### Upload Flow
+
+```
+Client
+  |
+  | multipart/form-data
+  ↓
+Multer Middleware (diskStorage)
+  |
+  | Temporary local storage
+  ↓
+Cloudinary Upload Utility
+  |
+  ↓
+Cloudinary Cloud Storage
+  |
+  ↓
+Store Cloudinary URL in Database
+```
+
+### Why use Multer `diskStorage`?
+
+Files are first stored temporarily on the server using Multer's `diskStorage` before uploading to Cloudinary.
+
+Reasons:
+- Provides a temporary file path that can be passed to Cloudinary.
+- Prevents keeping large files in server memory (unlike `memoryStorage`).
+- Allows file processing or validation before cloud upload.
+- Makes upload handling more reliable for larger files.
+
+After successful upload, the temporary local file should be removed to avoid unnecessary disk usage.
+
+### Cloudinary Upload Utility
+
+The utility handles:
+- Uploading files from local temporary storage to Cloudinary.
+- Supporting different file types using `resource_type: "auto"`.
+- Cleaning up local files if the upload fails.
+
+Flow:
+
+```
+Local File
+    |
+    ↓
+cloudinary.uploader.upload()
+    |
+    ↓
+Cloudinary URL
+    |
+    ↓
+Database Storage
+```
