@@ -203,4 +203,92 @@ const regenerateTokens = asyncHandler(async(req,res)=>{
     }
     
 })
-export { userRegister , login, logout, regenerateTokens }
+
+const changeCurrentPassword = asyncHandler(async(req,res)=>{
+    const {oldPassword, newPassword}= req?.body() 
+
+    const user = await User.findById(req?.user._id)
+
+    if(!user) throw new ApiError(500,"Cannot find User...");
+    const isPasswordCorrect = user.isPasswordCorrect(oldPassword)
+
+    if(!isPasswordCorrect) throw new ApiError(400,"Incorrect old password")
+    
+    user.password = newPassword
+    user.save({validateBeforeSave:false})
+
+    return res.status(200).json(
+        new ApiResponse(200,"Password updated successfully...")
+    )
+
+})
+
+const getUser = asyncHandler(async(req,res)=>{
+
+    return res.status(200).json(new ApiResponse(200,req.user,"User fetched successfully"))
+})
+
+const updateAccountDetail = asyncHandler(async(req,res)=>{
+    const {email, fullname} = req.body
+
+    if(!(fullname || email)) throw new ApiError(400,"All fields are required")
+    
+    const user = await User.findByIdAndUpdate(req?.user._id,{
+        $set:{
+            fullname,
+            email
+        }
+    },{new:true}).select("-password");
+    //{ new: true } tells Mongoose to return the updated document after the update is applied.
+
+    return res.status(200).json(new ApiResponse(200,"Account details updated successfully"))
+
+})
+
+const updateAvatar = asyncHandler(async(req,res)=>{
+    // 1. get file path from req.files (multer middleware already uploaded it on diskstorage)
+    // 2. if(!avatarPath) return apiError
+    // 3. import uploadOnCloudinary(avatarPath)|get file url from here
+    // 4. update the file url on db using .save() method
+    // 5. send response using ApiResponse
+
+    const avatarPath = req?.file?.path
+    if(!avatarPath) throw new ApiError(400,"please upload avatar image");
+
+    const avatarUrl = await uploadOnCloudinary(avatarPath)
+    if(!avatarUrl) throw new ApiError(500,"couldn't upload on cloudinary");
+
+    const user = await User.findByIdAndUpdate(req?.user._id,{
+        $set:{
+            avatar:avatarUrl
+        }
+    },{new:true}).select("-password");
+    if(!user) throw new ApiError(500,"couldn't update avatar file in db")
+
+    return res.status(200).json(
+        new ApiResponse(200,user,"avatar updated successfully...")
+    )
+
+})
+
+const updateCoverImage = asyncHandler(async(req,res)=>{
+
+    const CoverImagePath = req?.file?.path
+    if(!CoverImagePath) throw new ApiError(400,"please upload avatar image");
+
+    const coverimageUrl = await uploadOnCloudinary(avatarPath)
+    if(!coverimageUrl) throw new ApiError(500,"couldn't upload on cloudinary");
+
+    const user = await User.findByIdAndUpdate(req?.user._id,{
+        $set:{
+            avatar:avatarUrl
+        }
+    },{new:true}).select("-password");
+    if(!user) throw new ApiError(500,"couldn't update coverImage file in db")
+
+    return res.status(200).json(
+        new ApiResponse(200,user,"cover image updated successfully...")
+    )
+
+})
+export { userRegister , login, logout, regenerateTokens, changeCurrentPassword, getUser, updateAccountDetail, updateAvatar, updateCoverImage}
