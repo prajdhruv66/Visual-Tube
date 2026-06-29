@@ -56,12 +56,11 @@ const UserSchema = new Schema(
 => why hooks: as it is connected to schema
 => functions that run automatically before or after certain database operations.
 */
-UserSchema.pre("save",async function(next){
+UserSchema.pre("save", async function() {
     // isModified("field") : checks if a schema field is modified
-    if(!this.isModified("password")) return next()
+    if (!this.isModified("password")) return
 
-    this.password = bcrypt.hash(this.password,10)
-    next()
+    this.password = await bcrypt.hash(this.password, 10)
 })
 
 // custom methods attached to schema

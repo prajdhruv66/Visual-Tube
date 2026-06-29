@@ -110,10 +110,71 @@ UserSchema.methods.getFullName = function () {
 
 ## Access token and refresh token
 
-- Access token: a short-lived JWT used to authenticate API requests.
+- Access token: a short-lived JWT used to authenticate API requests and protect routes.
 - Refresh token: a longer-lived JWT used to request a new access token after the old one expires.
 - Keeping them separate improves security by limiting how long a leaked access token remains valid and allowing refreshes without forcing the user to log in again.
-- The project defines both in `src/models/user.model.js` with `jsonwebtoken`.}
+- In this project, both tokens are generated in `src/controllers/user.controllers.js` and verified in `src/middlewares/auth.middleware.js`.
+
+### Why use both tokens?
+
+- An access token is used frequently for normal API requests and should expire quickly.
+- A refresh token is used less often and can live longer so the user does not need to log in again every time the access token expires.
+- If an access token is stolen, it becomes useless after a short period.
+- If a user logs out, the refresh token can be removed from the database so future refresh attempts are rejected.
+
+### Login flow in this project
+
+1. The client sends `email/username` and `password` to `/api/v1/login`.
+2. The server validates the inputs and checks whether the user exists.
+3. If credentials are correct, the server calls `generateAccessAndRefreshTokens(userId)`.
+4. This helper:
+   - creates a new access token,
+   - creates a new refresh token,
+   - stores the refresh token in the user document,
+   - returns both tokens to the controller.
+5. The controller sends those tokens to the client, usually as `HttpOnly` cookies.
+
+### Protected route flow
+
+1. When a user visits a protected route, `verifyJwt` runs first.
+2. It reads the access token from the cookie or `Authorization` header.
+3. If the token is valid, the user is attached to `req.user` and the request proceeds.
+4. If the token is missing or invalid, the request is rejected.
+
+### Logout flow
+
+1. The logout route is also protected by `verifyJwt`.
+2. After authentication is confirmed, the server removes the refresh token from the database.
+3. The browser cookies for access and refresh tokens are cleared.
+4. After logout, the user must log in again to receive a fresh token pair.
+
+### When to use `generateAccessAndRefreshTokens()`
+
+Use `generateAccessAndRefreshTokens()` whenever the server needs to issue a new token pair.
+
+Typical cases:
+- after a successful login,
+- after a successful token refresh,
+- whenever you want to rotate tokens for security reasons.
+
+### When to use `regenerateTokens()`
+
+Use `regenerateTokens()` only when the access token has expired but the user still has a valid refresh token.
+
+Typical flow:
+1. Client sends the refresh token.
+2. Server verifies it.
+3. Server checks that the refresh token still matches the value stored in the database.
+4. If valid, the server creates a new access token and a new refresh token.
+5. The client receives the refreshed token pair and continues using the app.
+
+### Little theory
+
+- Access tokens should be short-lived.
+- Refresh tokens should be longer-lived but carefully stored and invalidated when needed.
+- Refresh tokens are useful for keeping user sessions smooth without asking the user to log in again repeatedly.
+- `HttpOnly` cookies are preferred for token storage because they reduce the risk of token theft through JavaScript.
+- The server should always compare the incoming refresh token with the one saved in the database before accepting it.
 
 ## File Upload Flow
 
@@ -172,6 +233,7 @@ Cloudinary URL
     ↓
 Database Storage
 ```
+
 <div style="overflow-x:auto">
 
 ## Controller Logic Flow
@@ -262,3 +324,163 @@ Database Storage
 | `deleteComment` | Delete comment | 1. Get commentId <br> 2. Verify ownership <br> 3. Delete comment <br> 4. Return success response |
 
 </div>
+
+# Access Token and Refresh Token
+
+## Access Token
+
+An **Access Token** is a short-lived token used to authenticate users and access protected resources.
+
+After successful login, the server generates an access token containing user information (payload) and sends it to the client.
+
+The client sends this token with every protected API request.
+
+### Flow
+
+```
+Client
+   |
+   | Request + Access Token
+   ↓
+Server
+   |
+   | Verify Token
+   ↓
+Access Granted
+```
+
+### Purpose
+
+- Authenticates the user
+- Provides access to protected routes
+- Avoids sending username/password repeatedly
+
+### Characteristics
+
+- Short expiration time (example: 15 minutes)
+- Used frequently with API requests
+- If compromised, the impact is limited because it expires quickly
+
+
+---
+
+# Refresh Token
+
+A **Refresh Token** is a long-lived token used to generate a new access token when the current access token expires.
+
+Instead of forcing the user to login again, the client sends the refresh token to the server and receives a new access token.
+
+### Flow
+
+```
+Access Token Expired
+          |
+          ↓
+Client Sends Refresh Token
+          |
+          ↓
+Server Verifies Refresh Token
+          |
+          ↓
+New Access Token Generated
+```
+
+### Purpose
+
+- Maintains user session
+- Allows users to stay logged in
+- Generates new access tokens without requiring login again
+
+### Characteristics
+
+- Long expiration time (example: 7 days / 30 days)
+- Stored more securely
+- Usually stored in HTTP-only cookies or database
+- Can be revoked by removing it from storage
+
+
+---
+
+# Why Use Both Access Token and Refresh Token?
+
+Using only an Access Token:
+
+```
+Login
+  |
+  ↓
+Access Token
+  |
+  ↓
+Token Expires
+  |
+  ↓
+User Logs In Again
+```
+
+Using Access Token + Refresh Token:
+
+```
+Login
+  |
+  ↓
+Access Token + Refresh Token
+  |
+  ↓
+Access Token Expires
+  |
+  ↓
+Refresh Token Generates New Access Token
+  |
+  ↓
+User Continues Using Application
+```
+
+---
+
+# Authentication Flow
+
+1. User logs in using credentials:
+
+```
+Email + Password
+        |
+        ↓
+Server verifies user
+```
+
+2. Server generates:
+
+```
+Access Token  → Short lived
+Refresh Token → Long lived
+```
+
+3. Client stores both tokens.
+
+4. Client accesses protected routes using:
+
+```
+Authorization: Bearer <access_token>
+```
+
+5. When the access token expires:
+
+```
+Refresh Token
+      |
+      ↓
+New Access Token
+```
+
+---
+
+# Difference Between Access Token and Refresh Token
+
+| Access Token | Refresh Token |
+|-------------|---------------|
+| Short-lived | Long-lived |
+| Used to access APIs | Used to generate new access tokens |
+| Sent with every protected request | Sent only during token refresh |
+| Higher exposure risk | Stored more securely |
+| Example expiry: 15 minutes | Example expiry: 7 days |
