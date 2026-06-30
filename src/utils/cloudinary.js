@@ -1,5 +1,6 @@
 import {v2 as cloudinary} from 'cloudinary'
 import fs from 'node:fs';
+import { ApiError } from './apiErrors.js';
 
 cloudinary.config({
     cloud_name:process.env.CLOUDINARY_CLOUD_NAME,
@@ -25,4 +26,19 @@ const uploadOnCloudinary = async (localFilePath)=>{
     }
 }
 
-export {uploadOnCloudinary}
+const deleteFromCloudinary = async (publicUrl)=>{
+    try {
+        if(!publicUrl) throw new ApiError(400,"Cannot get file path to delete")
+
+        const response = await cloudinary.uploader.destroy(publicUrl, 
+        {
+        invalidate: true
+        })
+        console.log("response while deteting file: ",response)
+        return response
+    } catch (error) {
+        throw new ApiError(500,error.message)
+    }
+}
+
+export {uploadOnCloudinary, deleteFromCloudinary}
