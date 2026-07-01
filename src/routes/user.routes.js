@@ -9,7 +9,7 @@ import { login,
     getUser,
     getUserChannelProfile,
     getWatchHistory
- } from "../controllers/user.controllers.js";
+ } from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJwt } from "../middlewares/auth.middleware.js";
 

@@ -28,7 +28,7 @@ const uploadOnCloudinary = async (localFilePath)=>{
 
 const deleteFromCloudinary = async (publicUrl)=>{
     try {
-        if(!publicUrl) throw new ApiError(400,"Cannot get file path to delete")
+        if(!publicUrl) throw new ApiError(400,"Cannot get file's public url to delete")
 
         const response = await cloudinary.uploader.destroy(publicUrl, 
         {

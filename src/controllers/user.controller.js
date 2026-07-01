@@ -293,10 +293,10 @@ const updateAvatar = asyncHandler(async(req,res)=>{
     //    publicId is required by cloudinary to delete old image
     if(oldAvatar){
 
-        const publicId = oldAvatar
-            .split("/")
-            .pop()
-            .split(".")[0]
+     const publicId = oldAvatar
+        .split("/")
+        .pop()
+        .split(".")[0]
 
 
         // 8. delete old avatar from cloudinary
@@ -421,7 +421,7 @@ const getUserChannelProfile = asyncHandler(async(req,res)=>{
         }
     },
     {
-        // $addFields is used to add fields on User database
+        // $addFields is used to add fields on result temporarily
         $addFields:{
             subscriberCount:{
                 $size:"$subscribers"
@@ -470,7 +470,7 @@ const getWatchHistory = asyncHandler(async(req,res)=>{
                 _id:new mongoose.Types.ObjectId(req.user._id) // we need to convert req.user._id(which is string) into mongodb object type
             }
         },
-        {
+        {  // 
             $lookup:{
                 from:"videos", // from which schema you wanna lookup
                 localField:"watchHistory",
