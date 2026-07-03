@@ -148,29 +148,77 @@ const getVideoById = asyncHandler(async(req,res)=>{
     )
 })
 
-const increaseViews = asyncHandler(async(req,res)=>{
-    // 1. get videoId from params || validate if videoId exists in param
-    // 3.find video document and update | increment views using $inc:{views:1} // why not video.views++ and video.save() => not concurrent
-    // 4. return appropriate response
+const watchVideo = asyncHandler(async (req, res) => {
+    const videoId = req.params?.videoId;
 
-    const videoId = req.params?.videoId
-    if(!videoId) throw new ApiError(400,"Cannot get videoId from param")
-                         
+    if (!videoId) {
+        throw new ApiError(400, "Cannot get videoId from param");
+    }
 
-    const updatedView =  await Video.findByIdAndUpdate( // note: findByIdAndUpdate() only has 3 args max
-                        videoId, 
-                        {$inc:{views:1}},
-                        {
-                            returnDocument:'after',
-                        }
-                    ).select("_id title views");
-    
-    if(!updatedView) throw  new ApiError(404,"cannot find video | Cannot update view");
+    if (!mongoose.Types.ObjectId.isValid(videoId)) {
+        throw new ApiError(400, "Invalid videoId");
+    }
 
-    return res.status(200).json(
-        new ApiResponse(200,updatedView,"Views updated..")
-    )
-})
+    const session = await mongoose.startSession(); // transaction is used in production => all db call passes or all fails...
+    try {
+        session.startTransaction();
+
+        // Increment video views
+        const updatedView = await Video.findByIdAndUpdate(
+            videoId,
+            {
+                $inc: { views: 1 }
+            },
+            {
+                returnDocument: "after",
+                session // used to tell that this db call belongs to this transaction
+            }
+        ).select("_id title views");
+
+        if (!updatedView) {
+            throw new ApiError(404, "Cannot find video");
+        }
+
+        // Update user's watch history
+        const updatedUser = await User.findByIdAndUpdate(
+            req.user._id,
+            {
+                $pull: {
+                    watchHistory: videoId
+                },
+                $push: {
+                    watchHistory: videoId
+                }
+            },
+            {
+                session
+            }
+        );
+
+        if (!updatedUser) {
+            throw new ApiError(404, "Cannot update watch history");
+        }
+
+        // Save both changes
+        await session.commitTransaction();
+
+        return res.status(200).json(
+            new ApiResponse(
+                200,
+                updatedView,
+                "Video watched successfully"
+            )
+        );
+    }
+    catch (error) {
+        // Undo all changes
+        await session.abortTransaction();
+        throw error
+    }
+    finally {
+        session.endSession();
+    }
+});
 
 const updateThumbnail = asyncHandler(async(req,res)=>{
 // Method: PATCH
@@ -358,4 +406,143 @@ const deleteVideo = asyncHandler(async(req,res)=>{
     
 })
 
-export {uploadVideo, getVideoById, increaseViews, updateThumbnail, updateVideoDetial, toggleIsPublish, deleteVideo}
+const getVideoFeed = asyncHandler(async (req, res) => {
+    const { mode, search } = req.query;
+
+    const page = Math.max(Number(req.query.page) || 1, 1);
+    const limit = 10;
+
+    const feedPipeline = getAllVideoPipeline({
+        limit,
+        page,
+        search,
+        mode
+    });
+
+    const videos = await Video.aggregate(feedPipeline);
+
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            videos,
+            "Video feed fetched successfully."
+        )
+    );
+});
+
+const getPersonalisedVideos = asyncHandler(async (req, res) => {
+    const userId = req.user?._id;
+    if (!userId) throw new ApiError(400, "User Id is required");
+    if (!mongoose.Types.ObjectId.isValid(userId))
+        throw new ApiError(404, "No user found");
+
+    const page = Math.max(Number(req.query.page) || 1, 1);
+    const limit = 10;
+
+    // Get last 5 watched videos with their tags
+    const recentVideos = await User.aggregate([
+        {
+            $match: {
+                _id: new mongoose.Types.ObjectId(userId)
+            }
+        },
+        {
+            $project: {
+                recentVideoIds: {
+                    $slice: ["$watchHistory", -5]
+                }
+            }
+        },
+        {
+            $lookup: {
+                from: "videos",
+                localField: "recentVideoIds",
+                foreignField: "_id",
+                as: "recentVideos",
+                pipeline: [
+                    {
+                        $project: {
+                            _id: 1,
+                            tags: 1
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            $project: {
+                _id: 0,
+                recentVideos: 1
+            }
+        }
+    ]);
+
+    // If user has no watch history
+    if (!recentVideos.length || !recentVideos[0].recentVideos.length) {
+        throw new ApiError(
+            404,
+            "No watch history found to generate recommendations"
+        );
+    }
+
+    const watchedVideoIds = recentVideos[0].recentVideos.map(
+        (video) => video._id
+    );
+
+    const extractedTags = [
+        ...new Set(
+            recentVideos[0].recentVideos.flatMap(
+                (video) => video.tags
+            )
+        )
+    ];
+
+    const pipeline = recommendedPipeline({
+        page,
+        limit,
+        extractedTags,
+        watchedVideoIds
+    });
+
+    const recommendedVideos = await Video.aggregate(pipeline);
+
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            recommendedVideos,
+            "Recommended videos fetched successfully"
+        )
+    );
+});
+
+const getWatchHistory = asyncHandler(async (req, res) => {
+    const userId = req.user?._id;
+
+    if (!userId)
+        throw new ApiError(401, "Unauthorized request");
+
+    if (!mongoose.Types.ObjectId.isValid(userId))
+        throw new ApiError(400, "Invalid user id");
+
+    const pipeline = getWatchedHistoryVideosPipeline({
+        userId,
+        limit: 150
+    });
+
+    const history = await User.aggregate(pipeline);
+
+    const watchedVideos = history[0]?.watchedVideos || [];
+
+    // Optional: newest watched first
+    watchedVideos.reverse();
+
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            watchedVideos,
+            "Watch history fetched successfully"
+        )
+    );
+});
+
+export {uploadVideo, getVideoById, watchVideo, updateThumbnail, updateVideoDetial, toggleIsPublish, deleteVideo, getVideoFeed, getPersonalisedVideos, getWatchHistory}
