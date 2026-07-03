@@ -1,6 +1,5 @@
 import mongoose,{Schema} from "mongoose";
-import { User } from "./user.model";
-import { ApiError } from "../utils/apiErrors";
+
 
 const videoSchema=new Schema(
     {
@@ -49,5 +48,20 @@ const videoSchema=new Schema(
     }
 )
 
+videoSchema.index(
+    {
+        title: "text",
+        description: "text",
+        tags: "text"
+    },
+    {
+        weights: {
+            title: 10,
+            tags: 5,
+            description: 2
+        },
+        name: "video_text_search"
+    }
+);
 
 export const Video = mongoose.model("Video",videoSchema)
