@@ -424,7 +424,7 @@ const getVideoFeed = asyncHandler(async (req, res) => {
     return res.status(200).json(
         new ApiResponse(
             200,
-            videos,
+            videos[0],
             "Video feed fetched successfully."
         )
     );
@@ -509,7 +509,7 @@ const getPersonalisedVideos = asyncHandler(async (req, res) => {
     return res.status(200).json(
         new ApiResponse(
             200,
-            recommendedVideos,
+            recommendedVideos[0],
             "Recommended videos fetched successfully"
         )
     );
@@ -539,7 +539,7 @@ const getWatchHistory = asyncHandler(async (req, res) => {
     return res.status(200).json(
         new ApiResponse(
             200,
-            watchedVideos,
+            watchedVideos[0],
             "Watch history fetched successfully"
         )
     );

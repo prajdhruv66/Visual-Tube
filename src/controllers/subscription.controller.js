@@ -107,7 +107,7 @@ const getSubscribedChannel = asyncHandler(async(req,res)=>{
     //    Meaning:
     //    User A has subscribed to User B's channel
 
-    const channels = await Subscription.aggregate([
+    const subscribedChannels = await Subscription.aggregate([
         // 2. Find subscription documents where current user is subscriber
         //    We convert string id into ObjectId because MongoDB stores references as ObjectId
         {
@@ -225,7 +225,7 @@ const getSubscribedChannel = asyncHandler(async(req,res)=>{
 
 
     // 10. If no subscribed channels found
-    if(!channels.length)
+    if(!subscribedChannels.length)
         throw new ApiError(
             404,
             "Cannot find subscribed channels"
@@ -236,7 +236,7 @@ const getSubscribedChannel = asyncHandler(async(req,res)=>{
 
         new ApiResponse(
             200,
-            channels,
+            subscribedChannels[0],
             "Channels fetched successfully!"
         )
 
