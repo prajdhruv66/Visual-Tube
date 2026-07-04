@@ -32,3 +32,4 @@ videoRouter.route('/personalised').get(verifyJwt,getPersonalisedVideos)
 videoRouter.route('/history').get(verifyJwt,getWatchHistory)
 videoRouter.route("/:videoId/likes").get(verifyJwt, getVideoLikes);
 
+export default videoRouter

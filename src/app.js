@@ -6,6 +6,7 @@ import videoRouter from './routes/video.route.js'
 import SubscriptionRouter from './routes/subscription.routes.js'
 import commentRouter from './routes/comment.routes.js'
 import likeRouter from './routes/like.routes.js'
+import PlaylistRouter from './routes/playlist.routes.js'
 
 const app = express()
 
@@ -18,9 +19,10 @@ app.use(cookieParser()) // parse cookies from requests
 
 // routes
 app.use('/api/v1', userRouter)
-app.use("/api/v1/videos", videoRouter);
+app.use("/api/v1/videos", videoRouter)
 app.use("/api/v1/subscription", SubscriptionRouter)
 app.use("/api/v1/comments",commentRouter)
 app.use("/api/v1/like",likeRouter)
+app.use("/api/v1/playlist",PlaylistRouter)
 
 export { app }
