@@ -545,4 +545,91 @@ const getWatchHistory = asyncHandler(async (req, res) => {
     );
 });
 
-export {uploadVideo, getVideoById, watchVideo, updateThumbnail, updateVideoDetial, toggleIsPublish, deleteVideo, getVideoFeed, getPersonalisedVideos, getWatchHistory}
+const getVideoLikes = asyncHandler(async (req, res) => {
+    const videoId = req.params?.videoId?.trim();
+
+    if (!videoId)
+        throw new ApiError(400, "VideoId is required");
+
+    if (!mongoose.Types.ObjectId.isValid(videoId))
+        throw new ApiError(400, "Invalid MongoDB id");
+
+    const existVideo = await Video.exists({ _id: videoId });
+
+    if (!existVideo)
+        throw new ApiError(404, "Video not found");
+
+    const page = Math.max(Number(req.query.page) || 1, 1);
+
+    const limit = Math.min(
+        Math.max(Number(req.query.limit) || 20, 1),
+        100
+    );
+
+    const likes = await Like.aggregate([
+        {
+            $match: {
+                video: existVideo._id
+            }
+        },
+        {
+            $lookup: {
+                from: "users",
+                localField: "likedBy",
+                foreignField: "_id",
+                as: "likedBy",
+                pipeline: [
+                    {
+                        $project: {
+                            username: 1,
+                            avatar: 1
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            $unwind: "$likedBy"
+        },
+        {
+            $project: {
+                _id: 1,
+                username: "$likedBy.username",
+                avatar: "$likedBy.avatar",
+                createdAt: 1
+            }
+        },
+        {
+            $sort: {
+                createdAt: -1
+            }
+        },
+        {
+            $facet: {
+                metadata: [
+                    {
+                        $count: "totalLikes"
+                    }
+                ],
+                likes: [
+                    {
+                        $skip: (page - 1) * limit
+                    },
+                    {
+                        $limit: limit
+                    }
+                ]
+            }
+        }
+    ]);
+
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            likes[0],
+            "Video likes fetched successfully"
+        )
+    );
+});
+
+export {uploadVideo, getVideoById, watchVideo, updateThumbnail, updateVideoDetial, toggleIsPublish, deleteVideo, getVideoFeed, getPersonalisedVideos, getWatchHistory, getVideoLikes}

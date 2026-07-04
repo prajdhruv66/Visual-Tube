@@ -50,7 +50,7 @@ const toggleSubscribe = asyncHandler(async(req,res)=>{
 
 
         if(!unsubscribe)
-            throw new ApiError(500,"Couldn't unsubscribe from channel")
+            throw new ApiError(400,"Bad request | Couldn't unsubscribe from channel")
 
 
         // 7. Return updated subscription state
@@ -78,7 +78,7 @@ const toggleSubscribe = asyncHandler(async(req,res)=>{
 
 
     if(!subscribe)
-        throw new ApiError(500,"Couldn't subscribe to channel")
+        throw new ApiError(400,"Bad Request | Couldn't subscribe to channel")
 
 
     // 9. Return updated subscription state
