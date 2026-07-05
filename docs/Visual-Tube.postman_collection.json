@@ -1,0 +1,1042 @@
+{
+  "info": {
+    "_postman_id": "5a34aa97-ae9b-458a-a0d0-7c909fdc7068",
+    "name": "Visual-Tube",
+    "description": "# Visual-Tube Backend API\n\nA RESTful backend inspired by YouTube, built with **Node.js**, **Express.js**, and **MongoDB**.\n\n## Features\n\n- JWT Authentication\n    \n- Video Uploads (Cloudinary)\n    \n- Personalized Video Feed\n    \n- Full-text Search\n    \n- Playlists\n    \n- Comments\n    \n- Likes\n    \n- Channel Subscriptions\n    \n- Watch History\n    \n- Aggregation Pipelines\n    \n- Pagination\n    \n\n## Authentication\n\nMost endpoints require a Bearer Token.\n\n```\nAuthorization: Bearer <access_token>\n\n ```\n\n## Base URL\n\n```\nhttp://localhost:8000/api/v1\n\n ```\n\nThis collection is organized into feature-based folders to simplify frontend integration and API testing.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "51970857",
+    "_collection_link": "https://go.postman.co/collection/51970857-5a34aa97-ae9b-458a-a0d0-7c909fdc7068?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "user",
+      "item": [
+        {
+          "name": "register",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "fullname",
+                  "value": "dhruv",
+                  "type": "text",
+                  "uuid": "fa97c6f0-a845-47f5-b15f-d09b75f97293"
+                },
+                {
+                  "key": "username",
+                  "value": "dhruv",
+                  "type": "text",
+                  "uuid": "4cb9dc73-4831-4126-a443-bdd9663fff85"
+                },
+                {
+                  "key": "email",
+                  "value": "dhruv@sample-email.com",
+                  "type": "text",
+                  "uuid": "2fa69705-228b-469b-9d57-6d6fc484a338"
+                },
+                {
+                  "key": "password",
+                  "value": "dhruv",
+                  "type": "text",
+                  "uuid": "07759b67-ec33-46d1-84cd-bc912bf92ab5"
+                },
+                {
+                  "key": "avatar",
+                  "type": "file",
+                  "uuid": "bfa050ed-4d46-4db9-a8d1-31d2e4b22573",
+                  "src": "/C:/Users/admin/Pictures/jotaro-and-star-platinum-fists-2rnkr0f9tuzoh3a6.jpg"
+                },
+                {
+                  "key": "coverImage",
+                  "type": "file",
+                  "uuid": "9d04132c-47a2-44bb-b55a-b25fe6fd7afd",
+                  "src": "/C:/Users/admin/Pictures/Camera Roll/gettyimages-1505296709-612x612.jpg"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{server}}/user/register",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "user",
+                "register"
+              ]
+            },
+            "description": "# Register User\n\n## Endpoint\n\nPOST /api/v1/user/register\n\n## Authentication\n\n❌ Not Required\n\n---\n\n## Purpose\n\nCreates a new user account and uploads avatar/cover image to Cloudinary.\n\n---\n\n## Request Body\n\nContent-Type: multipart/form-data\n\n| Field | Type | Required | Description |\n| --- | --- | --- | --- |\n| fullName | string | ✅ | User's full name |\n| username | string | ✅ | Must be unique |\n| email | string | ✅ | Must be unique |\n| password | string | ✅ | User password |\n| avatar | file | ✅ | Profile image |\n| coverImage | file | ❌ | Cover image |\n\n---\n\n## Success Response\n\nStatus: **201 Created**\n\n``` json\n{\n    \"statusCode\": 201,\n    \"data\": {\n        \"_id\": \"...\",\n        \"fullName\": \"...\",\n        \"username\": \"...\",\n        \"email\": \"...\",\n        \"avatar\": \"...\",\n        \"coverImage\": \"...\"\n    },\n    \"message\": \"User registered successfully\",\n    \"success\": true\n}\n\n ```\n\n---\n\n## Error Responses\n\n**400**\n\n- Missing required fields\n    \n- Username already exists\n    \n- Email already exists\n    \n\n---\n\n## Frontend Notes\n\n- Submit using **multipart/form-data**.\n    \n- Avatar is mandatory.\n    \n- Redirect to Login page after successful registration."
+          },
+          "response": []
+        },
+        {
+          "name": "login",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"email\": \"dhruv@sample-email.com\",\r\n    \"username\": \"dhruv\",\r\n    \"password\": \"dhruv\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{server}}/user/login",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "user",
+                "login"
+              ]
+            },
+            "description": "# Login\n\n## Endpoint\n\nPOST /api/v1/user/login\n\n## Authentication\n\n❌ Not Required\n\n---\n\n## Purpose\n\nAuthenticates user and returns Access Token & Refresh Token.\n\n---\n\n## Request Body\n\nContent-Type: application/json\n\n| Field | Type | Required |\n| --- | --- | --- |\n| email | string | Either email or username |\n| username | string | Either username or email |\n| password | string | ✅ |\n\n---\n\n## Success Response\n\nStatus: **200 OK**\n\n``` json\n{\n    \"statusCode\":200,\n    \"data\":{\n        \"user\":{},\n        \"accessToken\":\"...\",\n        \"refreshToken\":\"...\"\n    },\n    \"message\":\"Logged in successfully\",\n    \"success\":true\n}\n\n ```\n\n---\n\n## Error Responses\n\n400\n\n- Missing credentials\n    \n- Invalid password\n    \n\n404\n\n- User not found\n    \n\n---\n\n## Frontend Notes\n\n- Store Access Token securely.\n    \n- Refresh Token is handled automatically by backend.\n    \n- Redirect to Home page after login."
+          },
+          "response": []
+        },
+        {
+          "name": "logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{server}}/user/logout",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "user",
+                "logout"
+              ]
+            },
+            "description": "# Logout\n\n## Endpoint\n\nPOST /api/v1/user/logout\n\n## Authentication\n\n✅ Required\n\nBearer Token\n\n---\n\n## Purpose\n\nLogs out current user and clears refresh token.\n\n---\n\n## Success Response\n\nStatus: **200 OK**\n\n``` json\n{\n    \"statusCode\":200,\n    \"message\":\"Logged out successfully\",\n    \"success\":true\n}\n\n ```\n\n---\n\n## Frontend Notes\n\n- Remove stored access token.\n    \n- Redirect user to Login page."
+          },
+          "response": []
+        },
+        {
+          "name": "update account details",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"email\":\"newtest4@gmail.com\",\r\n    \"fullname\":\"newtest4\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{server}}/user/me",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "user",
+                "me"
+              ]
+            },
+            "description": "# Update Account Details\n\n## Endpoint\n\nPATCH /api/v1/user/update-account-details\n\n## Authentication\n\n✅ Required\n\n---\n\n## Request Body\n\nContent-Type: application/json\n\n| Field | Type |\n| --- | --- |\n| fullName | string |\n| email | string |\n\n---\n\n## Purpose\n\nUpdates account information.\n\n---\n\n## Success Response\n\nStatus: **200 OK**\n\nReturns updated user document.\n\n---\n\n## Error Responses\n\n400\n\n- Invalid data\n    \n\n404\n\n- User not found\n    \n\n---\n\n## Frontend Notes\n\nPrefill existing values before editing."
+          },
+          "response": []
+        },
+        {
+          "name": "update avatar",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "avatar",
+                  "type": "file",
+                  "uuid": "755873f6-dc4f-4b85-894a-8ccdfb56c495",
+                  "src": "/C:/Users/admin/Pictures/imp docs/my passphoto.jpg"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{server}}/user/update-avatar",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "user",
+                "update-avatar"
+              ],
+              "query": [
+                {
+                  "key": "",
+                  "value": null,
+                  "type": "text",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "# Update Avatar\n\n## Endpoint\n\nPATCH /api/v1/user/update-avatar\n\n## Authentication\n\n✅ Required\n\n---\n\n## Request Body\n\nContent-Type: multipart/form-data\n\n| Field | Type |\n| --- | --- |\n| avatar | file |\n\n---\n\n## Purpose\n\nUploads a new avatar image.\n\n---\n\n## Success Response\n\nStatus: **200 OK**\n\nReturns updated avatar URL.\n\n---\n\n## Frontend Notes\n\nImage preview is recommended before upload."
+          },
+          "response": []
+        },
+        {
+          "name": "update coverImage",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "coverImage",
+                  "type": "file",
+                  "uuid": "a77b269e-f7e3-4940-9cc8-30aabeacdd10",
+                  "src": "/C:/Users/admin/Pictures/Screenshots/8086_architecture.png"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{server}}/user/update-coverimage",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "user",
+                "update-coverimage"
+              ]
+            },
+            "description": "# Update Cover Image\n\n## Endpoint\n\nPATCH /api/v1/user/update-coverimage\n\n## Authentication\n\n✅ Required\n\n---\n\n## Request Body\n\nContent-Type: multipart/form-data\n\n| Field | Type |\n| --- | --- |\n| coverImage | file |\n\n---\n\n## Purpose\n\nUpdates user's cover image.\n\n---\n\n## Success Response\n\nStatus: **200 OK**\n\nReturns updated cover image URL.\n\n---\n\n## Frontend Notes\n\nUpload using multipart/form-data."
+          },
+          "response": []
+        },
+        {
+          "name": "get user",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{server}}/user/me",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "user",
+                "me"
+              ]
+            },
+            "description": "# Get Current User\n\n## Endpoint\n\nPOST /api/v1/user/get-user\n\n## Authentication\n\n✅ Required\n\n---\n\n## Purpose\n\nReturns currently logged-in user's profile.\n\n---\n\n## Success Response\n\nStatus: **200 OK**\n\nReturns authenticated user's information.\n\n---\n\n## Frontend Notes\n\nUse when application loads after authentication."
+          },
+          "response": []
+        },
+        {
+          "name": "get user channel profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{server}}/user/c/:username",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "user",
+                "c",
+                ":username"
+              ],
+              "variable": [
+                {
+                  "key": "username",
+                  "value": "rohan_patel"
+                }
+              ]
+            },
+            "description": "# Get User Channel Profile\n\n## Endpoint\n\nGET /api/v1/user/c/:username\n\n## Authentication\n\n✅ Required\n\n---\n\n## Path Parameters\n\n| Name | Type |\n| --- | --- |\n| username | string |\n\n---\n\n## Purpose\n\nReturns public channel profile.\n\nIncludes:\n\n- Channel information\n    \n- Subscriber count\n    \n- Subscribed count\n    \n- Is current user subscribed\n    \n\n---\n\n## Success Response\n\nStatus: **200 OK**\n\nReturns channel profile object.\n\n---\n\n## Frontend Notes\n\nUse for Channel page."
+          },
+          "response": []
+        },
+        {
+          "name": "get watch history",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{server}}/user/history",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "user",
+                "history"
+              ]
+            },
+            "description": "# Get Watch History\n\n## Endpoint\n\nGET /api/v1/user/history\n\n## Authentication\n\n✅ Required\n\n---\n\n## Purpose\n\nReturns authenticated user's watch history.\n\nVideos are ordered from most recently watched to oldest.\n\n---\n\n## Success Response\n\nStatus: **200 OK**\n\nReturns array of watched videos.\n\n---\n\n## Frontend Notes\n\nDisplay using horizontal scrolling or History page."
+          },
+          "response": []
+        },
+        {
+          "name": "regererate-tokens",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{server}}/user/regenerate-tokens",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "user",
+                "regenerate-tokens"
+              ]
+            },
+            "description": "# Regenerate Access Token\n\n## Endpoint\n\nPOST /api/v1/user/regenerate-tokens\n\n## Authentication\n\n❌ Uses Refresh Token\n\n---\n\n## Purpose\n\nGenerates a new Access Token using Refresh Token.\n\n---\n\n## Success Response\n\nStatus: **200 OK**\n\nReturns:\n\n- new access token\n    \n- new refresh token\n    \n\n---\n\n## Frontend Notes\n\nCall automatically when receiving **401 Unauthorized** due to expired access token."
+          },
+          "response": []
+        }
+      ],
+      "description": "# Authentication & User APIs\n\nHandles user authentication and account management.\n\nIncludes:\n\n- User Registration\n    \n- Login & Logout\n    \n- Token Regeneration\n    \n- Update Account Details\n    \n- Update Avatar & Cover Image\n    \n- Get Current User\n    \n- Get Channel Profile\n    \n- Watch History"
+    },
+    {
+      "name": "video",
+      "item": [
+        {
+          "name": "upload video",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "video",
+                  "type": "file",
+                  "uuid": "ba5ef326-5cf5-48ff-acf6-cce27f4e4abe",
+                  "src": "/C:/Users/admin/Desktop/Capstone_project/seed-assets/videos/videos_15.mp4"
+                },
+                {
+                  "key": "thumbnail",
+                  "type": "file",
+                  "uuid": "1cd9122f-edfc-4c38-93a5-db873ceb05b8",
+                  "src": "/C:/Users/admin/Desktop/Capstone_project/seed-assets/thumbnails/thumbnails_2.jpg"
+                },
+                {
+                  "key": "title",
+                  "value": "Introduction to mongodb",
+                  "type": "text",
+                  "uuid": "7a99fad9-4ca6-4609-8983-f0a8f2b78858"
+                },
+                {
+                  "key": "description",
+                  "value": "mongodb introduction with project set up and creating first mongodb query",
+                  "type": "text",
+                  "uuid": "b69310b7-705a-4251-8f70-bae8a6fbfe8a"
+                },
+                {
+                  "key": "tags",
+                  "value": "mongodb,mongodb compass,backend, mongodb course",
+                  "type": "text",
+                  "uuid": "cb63b398-b962-41e7-851b-ea38fa0e7625"
+                },
+                {
+                  "key": "isPublished",
+                  "value": "true",
+                  "type": "text",
+                  "uuid": "4f3b4f1e-7739-4ad5-9d36-c3be1797a81e"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{server}}/video/",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "video",
+                ""
+              ]
+            },
+            "description": "# Upload Video\n\n## Endpoint\n\nPOST /api/v1/video\n\n## Authentication\n\n✅ Required (Bearer Token)\n\n---\n\n## Purpose\n\nUploads a new video along with its thumbnail. The authenticated user becomes the owner of the uploaded video.\n\n---\n\n## Request Body\n\nContent-Type: multipart/form-data\n\n| Field | Type | Required | Description |\n| --- | --- | --- | --- |\n| title | string | ✅ | Video title |\n| description | string | ✅ | Video description |\n| tags | string | ✅ | Comma-separated tags (e.g. mongodb,nodejs,backend) |\n| isPublished | boolean | ❌ | Defaults to false if omitted |\n| video | file | ✅ | Video file |\n| thumbnail | file | ✅ | Thumbnail image |\n\n---\n\n## Success Response\n\nStatus: **201 Created**\n\n``` json\n{\n    \"statusCode\":201,\n    \"data\":{\n        \"_id\":\"...\",\n        \"title\":\"...\",\n        \"owner\":\"...\"\n    },\n    \"message\":\"Video uploaded successfully\",\n    \"success\":true\n}\n\n ```\n\n---\n\n## Error Responses\n\n400\n\n- Required fields missing\n    \n- Invalid file\n    \n\n404\n\n- User not found\n    \n\n---\n\n## Frontend Notes\n\n- Send request as **multipart/form-data**.\n    \n- Tags must be sent as a comma-separated string.\n    \n- Do not wrap strings inside quotes (`\"title\"`).\n    \n- After successful upload, redirect to the uploaded video's page."
+          },
+          "response": []
+        },
+        {
+          "name": "get video by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{server}}/video/:videoId",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "video",
+                ":videoId"
+              ],
+              "variable": [
+                {
+                  "key": "videoId",
+                  "value": "6a4a5b6b7d23a3cc3be8107b"
+                }
+              ]
+            },
+            "description": "# Get Video By ID\n\n## Endpoint\n\nGET /api/v1/video/:videoId\n\n## Authentication\n\n✅ Required\n\n---\n\n## Purpose\n\nReturns complete information about a single video.\n\nThe response includes:\n\n- Video details\n    \n- Owner information\n    \n- Like count\n    \n- Subscription information\n    \n- Whether current user liked the video\n    \n- Whether current user subscribed to the channel\n    \n\n---\n\n## Path Parameters\n\n| Name | Type |\n| --- | --- |\n| videoId | ObjectId |\n\n---\n\n## Success Response\n\nStatus: **200 OK**\n\nReturns complete video object.\n\n---\n\n## Error Responses\n\n400\n\n- Invalid videoId\n    \n\n404\n\n- Video not found\n    \n\n---\n\n## Frontend Notes\n\nUse this endpoint when opening the Watch page."
+          },
+          "response": []
+        },
+        {
+          "name": "watch video",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{server}}/video/:videoId/watch",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "video",
+                ":videoId",
+                "watch"
+              ],
+              "variable": [
+                {
+                  "key": "videoId",
+                  "value": "6a4a5b6b7d23a3cc3be8107b"
+                }
+              ]
+            },
+            "description": "# Watch Video\n\n## Endpoint\n\nPOST /api/v1/video/:videoId/watch\n\n## Authentication\n\n✅ Required\n\n---\n\n## Purpose\n\nRegisters a video watch.\n\nThis endpoint:\n\n- increments view count\n    \n- updates user's watch history\n    \n\n---\n\n## Path Parameters\n\n| Name | Type |\n| --- | --- |\n| videoId | ObjectId |\n\n---\n\n## Success Response\n\nStatus: **200 OK**\n\nReturns updated video view count.\n\n---\n\n## Error Responses\n\n400\n\n- Invalid videoId\n    \n\n404\n\n- Video not found\n    \n\n---\n\n## Frontend Notes\n\n**Do NOT call immediately when opening the Watch page.**\n\nWait until:\n\n- playback has started\n    \n- approximately **15–20 seconds** have elapsed\n    \n\nOnly then call this endpoint."
+          },
+          "response": []
+        },
+        {
+          "name": "update thumbnail",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{server}}/video/:videoId/thumbnail",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "video",
+                ":videoId",
+                "thumbnail"
+              ],
+              "variable": [
+                {
+                  "key": "videoId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "# Update Thumbnail\n\n## Endpoint\n\nPATCH /api/v1/video/:videoId/change-avatar\n\n## Authentication\n\n✅ Required\n\n---\n\n## Purpose\n\nUpdates video thumbnail.\n\nOnly the owner can perform this operation.\n\n---\n\n## Request Body\n\nContent-Type: multipart/form-data\n\n| Field | Type |\n| --- | --- |\n| thumbnail | file |\n\n---\n\n## Success Response\n\nStatus: **200 OK**\n\nReturns updated thumbnail URL.\n\n---\n\n## Frontend Notes\n\nDisplay image preview before uploading."
+          },
+          "response": []
+        },
+        {
+          "name": "update video details",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{server}}/video/:videoId",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "video",
+                ":videoId"
+              ],
+              "variable": [
+                {
+                  "key": "videoId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "# Update Video Details\n\n## Endpoint\n\nPATCH /api/v1/video/:videoId\n\n## Authentication\n\n✅ Required\n\n---\n\n## Purpose\n\nUpdates video's metadata.\n\nOnly the owner can update.\n\n---\n\n## Path Parameters\n\n| Name | Type |\n| --- | --- |\n| videoId | ObjectId |\n\n---\n\n## Request Body\n\nContent-Type: application/json\n\n| Field | Type |\n| --- | --- |\n| title | string |\n| description | string |\n| tags | array |\n\n---\n\n## Success Response\n\nStatus: **200 OK**\n\nReturns updated video.\n\n---\n\n## Error Responses\n\n400\n\n- Invalid request\n    \n\n404\n\n- Video not found\n    \n\n---\n\n## Frontend Notes\n\nOnly show Edit option for the video owner."
+          },
+          "response": []
+        },
+        {
+          "name": "toggle publish",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{server}}/video/:videoId/publish",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "video",
+                ":videoId",
+                "publish"
+              ],
+              "variable": [
+                {
+                  "key": "videoId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "# Toggle Publish Status\n\n## Endpoint\n\nPATCH /api/v1/video/:videoId/publish\n\n## Authentication\n\n✅ Required\n\n---\n\n## Purpose\n\nToggles video visibility between:\n\n- Published\n    \n- Private\n    \n\nOnly the owner can perform this operation.\n\n---\n\n## Success Response\n\nStatus: **200 OK**\n\nReturns updated publish status.\n\n---\n\n## Frontend Notes\n\nIdeal for a Publish/Unpublish switch in Creator Studio."
+          },
+          "response": []
+        },
+        {
+          "name": "delete video",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{server}}/video/:videoId",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "video",
+                ":videoId"
+              ],
+              "variable": [
+                {
+                  "key": "videoId",
+                  "value": "6a4a286244efabcd93aafd90"
+                }
+              ]
+            },
+            "description": "# Delete Video\n\n## Endpoint\n\nDELETE /api/v1/video/:videoId\n\n## Authentication\n\n✅ Required\n\n---\n\n## Purpose\n\nDeletes a video permanently.\n\nAssociated Cloudinary media is also removed.\n\nOnly the owner can delete.\n\n---\n\n## Success Response\n\nStatus: **200 OK**\n\nReturns deletion confirmation.\n\n---\n\n## Error Responses\n\n404\n\n- Video not found\n    \n\n---\n\n## Frontend Notes\n\nAlways show a confirmation dialog before deleting."
+          },
+          "response": []
+        },
+        {
+          "name": "get feed",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{server}}/video/get-feed?mode=trending",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "video",
+                "get-feed"
+              ],
+              "query": [
+                {
+                  "key": "mode",
+                  "value": "trending"
+                }
+              ]
+            },
+            "description": "# Get Video Feed\n\n## Endpoint\n\nGET /api/v1/video/get-feed\n\n## Authentication\n\n✅ Required\n\n---\n\n## Purpose\n\nReturns the public video feed.\n\nSupports:\n\n- Latest videos\n    \n- Trending videos\n    \n- Full-text search\n    \n- Pagination\n    \n\n---\n\n## Query Parameters\n\n| Name | Type | Default |\n| --- | --- | --- |\n| page | number | 1 |\n| limit | number | 10 |\n| search | string | \"\" |\n| mode | string | latest |\n\nmode values:\n\n- latest\n    \n- trending\n    \n\n---\n\n## Success Response\n\nStatus: **200 OK**\n\nReturns:\n\n- totalVideos\n    \n- paginated videos\n    \n\n---\n\n## Frontend Notes\n\nSupports infinite scrolling.\n\nSearch uses MongoDB Text Index."
+          },
+          "response": []
+        },
+        {
+          "name": "personalised feed",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{server}}/video/personalised?page=1&limit=20",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "video",
+                "personalised"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "# Personalized Feed\n\n## Endpoint\n\nGET /api/v1/video/personalised\n\n## Authentication\n\n✅ Required\n\n---\n\n## Purpose\n\nReturns recommended videos.\n\nRecommendations are generated using:\n\n- Watch history\n    \n- Previously watched tags\n    \n- Excludes already watched videos\n    \n\n---\n\n## Query Parameters\n\n| Name | Type | Default |\n| --- | --- | --- |\n| page | number | 1 |\n| limit | number | 10 |\n\n---\n\n## Success Response\n\nStatus: **200 OK**\n\nReturns paginated recommended videos.\n\n---\n\n## Frontend Notes\n\nUse for the Home page after user login."
+          },
+          "response": []
+        },
+        {
+          "name": "get video likes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{server}}/video/:videoId/likes",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "video",
+                ":videoId",
+                "likes"
+              ],
+              "variable": [
+                {
+                  "key": "videoId",
+                  "value": "6a4a286244efabcd93aafd90"
+                }
+              ]
+            },
+            "description": "# Get Video Likes\n\n## Endpoint\n\nGET /api/v1/video/:videoId/likes\n\n## Authentication\n\n✅ Required\n\n---\n\n## Purpose\n\nReturns users who liked the specified video.\n\n---\n\n## Path Parameters\n\n| Name | Type |\n| --- | --- |\n| videoId | ObjectId |\n\n---\n\n## Success Response\n\nStatus: **200 OK**\n\nReturns:\n\n- Total likes\n    \n- User information of each liker\n    \n\n---\n\n## Error Responses\n\n400\n\n- Invalid videoId\n    \n\n404\n\n- Video not found\n    \n\n---\n\n## Frontend Notes\n\nUseful for a \"Liked By\" modal or analytics page. The watch page itself can rely on the `likeCount` returned by **Get Video By ID** instead of calling this endpoint separately."
+          },
+          "response": []
+        }
+      ],
+      "description": "# Video APIs\n\nHandles all video-related operations.\n\nIncludes:\n\n- Upload Video\n    \n- Watch Video\n    \n- Get Video By ID\n    \n- Update Video Details\n    \n- Update Thumbnail\n    \n- Toggle Publish Status\n    \n- Delete Video\n    \n- Video Feed\n    \n- Personalized Feed\n    \n- Video Likes"
+    },
+    {
+      "name": "comment",
+      "item": [
+        {
+          "name": "get video comments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{server}}/comments/video/:videoId",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "comments",
+                "video",
+                ":videoId"
+              ],
+              "variable": [
+                {
+                  "key": "videoId",
+                  "value": "6a4a286244efabcd93aafd90"
+                }
+              ]
+            },
+            "description": "# Get Video Comments\n\n## Endpoint\n\nGET /api/v1/comment/video/:videoId\n\n## Authentication\n\n✅ Required\n\n---\n\n## Purpose\n\nReturns all comments for a video.\n\nEach comment includes:\n\n- Comment content\n    \n- Comment owner details\n    \n- Like count\n    \n- Whether the current user has liked the comment\n    \n\n---\n\n## Path Parameters\n\n| Name | Type |\n| --- | --- |\n| videoId | ObjectId |\n\n---\n\n## Success Response\n\nStatus: **200 OK**\n\nReturns an array of comments.\n\n---\n\n## Error Responses\n\n400\n\n- Invalid videoId\n    \n\n404\n\n- Video not found\n    \n\n---\n\n## Frontend Notes\n\nDisplay comments sorted from newest to oldest.\n\nSupports rendering Like button using the returned `isLiked` field."
+          },
+          "response": []
+        },
+        {
+          "name": "add comment",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"content\":\"Comment by rohan_patel.... 🫣🫣🫣\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{server}}/comments/video/:videoId",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "comments",
+                "video",
+                ":videoId"
+              ],
+              "variable": [
+                {
+                  "key": "videoId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "# Add Comment\n\n## Endpoint\n\nPOST /api/v1/comment/video/:videoId\n\n## Authentication\n\n✅ Required\n\n---\n\n## Purpose\n\nAdds a new comment to the specified video.\n\n---\n\n## Path Parameters\n\n| Name | Type |\n| --- | --- |\n| videoId | ObjectId |\n\n---\n\n## Request Body\n\nContent-Type: application/json\n\n| Field | Type | Required |\n| --- | --- | --- |\n| content | string | ✅ |\n\n---\n\n## Success Response\n\nStatus: **201 Created**\n\nReturns the newly created comment.\n\n---\n\n## Error Responses\n\n400\n\n- Empty comment\n    \n- Invalid videoId\n    \n\n404\n\n- Video not found\n    \n\n---\n\n## Frontend Notes\n\nAfter successful creation, prepend the returned comment to the existing comment list instead of re-fetching all comments."
+          },
+          "response": []
+        },
+        {
+          "name": "edit comment",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"content\":\"Changed by rohan_patel...\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{server}}/comments/:commentId",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "comments",
+                ":commentId"
+              ],
+              "variable": [
+                {
+                  "key": "commentId",
+                  "value": "6a4a36087524b8abb3c419ba"
+                }
+              ]
+            },
+            "description": "# Edit Comment\n\n## Endpoint\n\nPATCH /api/v1/comment/:commentId\n\n## Authentication\n\n✅ Required\n\n---\n\n## Purpose\n\nUpdates an existing comment.\n\nOnly the comment owner can edit.\n\n---\n\n## Path Parameters\n\n| Name | Type |\n| --- | --- |\n| commentId | ObjectId |\n\n---\n\n## Request Body\n\nContent-Type: application/json\n\n| Field | Type |\n| --- | --- |\n| content | string |\n\n---\n\n## Success Response\n\nStatus: **200 OK**\n\nReturns the updated comment.\n\n---\n\n## Error Responses\n\n400\n\n- Empty content\n    \n- Invalid commentId\n    \n\n404\n\n- Comment not found\n    \n\n---\n\n## Frontend Notes\n\nShow the Edit option only for comments created by the authenticated user."
+          },
+          "response": []
+        },
+        {
+          "name": "delete comment",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{server}}/comments/:commentId",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "comments",
+                ":commentId"
+              ],
+              "variable": [
+                {
+                  "key": "commentId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "# Delete Comment\n\n## Endpoint\n\nDELETE /api/v1/comment/:commentId\n\n## Authentication\n\n✅ Required\n\n---\n\n## Purpose\n\nDeletes a comment.\n\nOnly the comment owner can delete.\n\n---\n\n## Path Parameters\n\n| Name | Type |\n| --- | --- |\n| commentId | ObjectId |\n\n---\n\n## Success Response\n\nStatus: **200 OK**\n\nReturns a confirmation message.\n\n---\n\n## Error Responses\n\n400\n\n- Invalid commentId\n    \n\n404\n\n- Comment not found\n    \n\n---\n\n## Frontend Notes\n\nDisplay a confirmation dialog before deletion.\n\nOn success, remove the comment from the UI without making another API request."
+          },
+          "response": []
+        }
+      ],
+      "description": "# Comment APIs\n\nHandles video comments.\n\nIncludes:\n\n- Add Comment\n    \n- Edit Comment\n    \n- Delete Comment\n    \n- Get Video Comments"
+    },
+    {
+      "name": "subscription",
+      "item": [
+        {
+          "name": "get subscribed channels",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{server}}/subscription/subscription",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "subscription",
+                "subscription"
+              ]
+            },
+            "description": "# Get Subscribed Channels\n\n## Endpoint\n\nGET /api/v1/subscription\n\n## Authentication\n\n✅ Required\n\n---\n\n## Purpose\n\nReturns all channels subscribed to by the authenticated user.\n\n---\n\n## Success Response\n\nStatus: **200 OK**\n\nReturns an array containing:\n\n- Channel ID\n    \n- Username\n    \n- Avatar\n    \n- Subscriber count\n    \n\n---\n\n## Error Responses\n\n404\n\n- User not found\n    \n\n---\n\n## Frontend Notes\n\nUse this endpoint to display the **Subscriptions** page or sidebar."
+          },
+          "response": []
+        },
+        {
+          "name": "toggle subscribe",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{server}}/subscription/:channelId",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "subscription",
+                ":channelId"
+              ],
+              "variable": [
+                {
+                  "key": "channelId",
+                  "value": "6a4a278344efabcd93aafd83"
+                }
+              ]
+            },
+            "description": "# Toggle Subscribe\n\n## Endpoint\n\nPOST /api/v1/subscription/:channelId\n\n## Authentication\n\n✅ Required (Bearer Token)\n\n---\n\n## Purpose\n\nSubscribes or unsubscribes the authenticated user from a channel.\n\nIf the user is not subscribed, a new subscription is created.\n\nIf already subscribed, the subscription is removed.\n\n---\n\n## Path Parameters\n\n| Name | Type | Description |\n| --- | --- | --- |\n| channelId | ObjectId | Channel owner's user ID |\n\n---\n\n## Success Response\n\nStatus: **200 OK**\n\n``` json\n{\n    \"statusCode\":200,\n    \"data\":{\n        \"isSubscribed\":true\n    },\n    \"message\":\"Subscribed successfully\",\n    \"success\":true\n}\n\n ```\n\nor\n\n``` json\n{\n    \"statusCode\":200,\n    \"data\":{\n        \"isSubscribed\":false\n    },\n    \"message\":\"Unsubscribed successfully\",\n    \"success\":true\n}\n\n ```\n\n---\n\n## Error Responses\n\n400\n\n- Invalid channelId\n    \n- Cannot subscribe to yourself\n    \n\n404\n\n- Channel not found\n    \n\n---\n\n## Frontend Notes\n\n- Update Subscribe button immediately using the returned `isSubscribed` value.\n    \n- No need to make another API call after toggling."
+          },
+          "response": []
+        }
+      ],
+      "description": "# Subscription APIs\n\nManages channel subscriptions.\n\nIncludes:\n\n- Subscribe / Unsubscribe Channel\n    \n- Get Subscribed Channels"
+    },
+    {
+      "name": "like",
+      "item": [
+        {
+          "name": "toggle video like",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{server}}/like/video/:videoId",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "like",
+                "video",
+                ":videoId"
+              ],
+              "query": [
+                {
+                  "key": "",
+                  "value": null,
+                  "type": "text",
+                  "disabled": true
+                }
+              ],
+              "variable": [
+                {
+                  "key": "videoId",
+                  "value": "6a4a286244efabcd93aafd90"
+                }
+              ]
+            },
+            "description": "# Toggle Video Like\n\n## Endpoint\n\nPOST /api/v1/like/video/:videoId\n\n## Authentication\n\n✅ Required (Bearer Token)\n\n---\n\n## Purpose\n\nLikes or unlikes a video.\n\nIf the authenticated user has not liked the video, a new like is created.\n\nIf already liked, the like is removed.\n\n---\n\n## Path Parameters\n\n| Name | Type |\n| --- | --- |\n| videoId | ObjectId |\n\n---\n\n## Success Response\n\nStatus: **200 OK**\n\n``` json\n{\n    \"statusCode\":200,\n    \"data\":{\n        \"isLiked\":true\n    },\n    \"message\":\"Video liked successfully\",\n    \"success\":true\n}\n\n ```\n\nor\n\n``` json\n{\n    \"statusCode\":200,\n    \"data\":{\n        \"isLiked\":false\n    },\n    \"message\":\"Video unliked successfully\",\n    \"success\":true\n}\n\n ```\n\n---\n\n## Error Responses\n\n400\n\n- Invalid videoId\n    \n\n404\n\n- Video not found\n    \n\n---\n\n## Frontend Notes\n\n- Update the Like button using the returned `isLiked` value.\n    \n- Adjust the displayed like count without making another API request."
+          },
+          "response": []
+        },
+        {
+          "name": "toggle comment like",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{server}}/like/comment/:commentId",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "like",
+                "comment",
+                ":commentId"
+              ],
+              "variable": [
+                {
+                  "key": "commentId",
+                  "value": "6a4a2a1c44efabcd93aafe68"
+                }
+              ]
+            },
+            "description": "# Toggle Comment Like\n\n## Endpoint\n\nPOST /api/v1/like/comment/:commentId\n\n## Authentication\n\n✅ Required\n\n---\n\n## Purpose\n\nLikes or unlikes a comment.\n\nOnly one like per user per comment is allowed.\n\n---\n\n## Path Parameters\n\n| Name | Type |\n| --- | --- |\n| commentId | ObjectId |\n\n---\n\n## Success Response\n\nStatus: **200 OK**\n\n``` json\n{\n    \"statusCode\":200,\n    \"data\":{\n        \"isLiked\":true\n    },\n    \"message\":\"Comment liked successfully\",\n    \"success\":true\n}\n\n ```\n\nor\n\n``` json\n{\n    \"statusCode\":200,\n    \"data\":{\n        \"isLiked\":false\n    },\n    \"message\":\"Comment unliked successfully\",\n    \"success\":true\n}\n\n ```\n\n---\n\n## Error Responses\n\n400\n\n- Invalid commentId\n    \n\n404\n\n- Comment not found\n    \n\n---\n\n## Frontend Notes\n\n- Update the comment's Like button immediately using the returned `isLiked` value.\n    \n- Increment or decrement the displayed like count locally instead of refetching all comments."
+          },
+          "response": []
+        }
+      ],
+      "description": "# Like APIs\n\nProvides toggle-like functionality.\n\nSupports:\n\n- Like / Unlike Videos\n    \n- Like / Unlike Comments"
+    },
+    {
+      "name": "playlist",
+      "item": [
+        {
+          "name": "create playlist",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"name\":\"Mongodb Playlist\",\r\n    \"description\":\"I've covered mongodb from beginner level to advaced level, explaination goes in depth with variety of interview and technical questions\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{server}}/playlist/",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "playlist",
+                ""
+              ]
+            },
+            "description": "# Create Playlist\n\n## Endpoint\n\nPOST /api/v1/playlist\n\n## Authentication\n\n✅ Required (Bearer Token)\n\n---\n\n## Purpose\n\nCreates a new playlist for the authenticated user.\n\n---\n\n## Request Body\n\nContent-Type: application/json\n\n| Field | Type | Required | Description |\n| --- | --- | --- | --- |\n| name | string | ✅ | Playlist name |\n| description | string | ❌ | Playlist description |\n\n---\n\n## Success Response\n\nStatus: **201 Created**\n\nReturns the newly created playlist.\n\n---\n\n## Error Responses\n\n400\n\n- Playlist name is required\n    \n\n---\n\n## Frontend Notes\n\n- Every playlist belongs to the authenticated user.\n    \n- Redirect to the playlist page after successful creation."
+          },
+          "response": []
+        },
+        {
+          "name": "get user playlist",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{server}}/playlist/user/:userId",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "playlist",
+                "user",
+                ":userId"
+              ],
+              "variable": [
+                {
+                  "key": "userId",
+                  "value": "6a4a277344efabcd93aafd81"
+                }
+              ]
+            },
+            "description": "# Get All User Playlists\n\n## Endpoint\n\nGET /api/v1/playlist/user/:userId\n\n## Authentication\n\n✅ Required\n\n---\n\n## Purpose\n\nReturns all playlists created by the specified user.\n\n---\n\n## Path Parameters\n\n| Name | Type |\n| --- | --- |\n| userId | ObjectId |\n\n---\n\n## Success Response\n\nStatus: **200 OK**\n\nReturns an array of playlists.\n\nEach playlist contains:\n\n- Playlist ID\n    \n- Name\n    \n- Description\n    \n- Thumbnail (first video's thumbnail if available)\n    \n- Total videos\n    \n- Owner information\n    \n\n---\n\n## Error Responses\n\n400\n\n- Invalid userId\n    \n\n404\n\n- User not found\n    \n\n---\n\n## Frontend Notes\n\nUse for displaying playlists on a user's channel page."
+          },
+          "response": []
+        },
+        {
+          "name": "get single playlist",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{server}}/playlist/:playlistId",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "playlist",
+                ":playlistId"
+              ],
+              "variable": [
+                {
+                  "key": "playlistId",
+                  "value": "6a4a57baf92b0cd3138a0f11"
+                }
+              ]
+            },
+            "description": "# Get Playlist By ID\n\n## Endpoint\n\nGET /api/v1/playlist/:playlistId\n\n## Authentication\n\n✅ Required\n\n---\n\n## Purpose\n\nReturns complete playlist information.\n\nIncludes:\n\n- Playlist details\n    \n- Owner details\n    \n- Videos in the same order they were added\n    \n\n---\n\n## Path Parameters\n\n| Name | Type |\n| --- | --- |\n| playlistId | ObjectId |\n\n---\n\n## Success Response\n\nStatus: **200 OK**\n\nReturns playlist object.\n\n---\n\n## Error Responses\n\n400\n\n- Invalid playlistId\n    \n\n404\n\n- Playlist not found\n    \n\n---\n\n## Frontend Notes\n\nVideos are already sorted according to the playlist order.  \nNo additional sorting is required on the frontend."
+          },
+          "response": []
+        },
+        {
+          "name": "update playlist",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{server}}/playlist/:playlistId",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "playlist",
+                ":playlistId"
+              ],
+              "variable": [
+                {
+                  "key": "playlistId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "# Update Playlist\n\n## Endpoint\n\nPATCH /api/v1/playlist/:playlistId\n\n## Authentication\n\n✅ Required\n\n---\n\n## Purpose\n\nUpdates playlist name and description.\n\nOnly the playlist owner can update.\n\n---\n\n## Path Parameters\n\n| Name | Type |\n| --- | --- |\n| playlistId | ObjectId |\n\n---\n\n## Request Body\n\nContent-Type: application/json\n\n| Field | Type |\n| --- | --- |\n| name | string |\n| description | string |\n\n---\n\n## Success Response\n\nStatus: **200 OK**\n\nReturns updated playlist.\n\n---\n\n## Error Responses\n\n400\n\n- Invalid playlistId\n    \n\n404\n\n- Playlist not found\n    \n\n---\n\n## Frontend Notes\n\nShow Edit option only to the playlist owner."
+          },
+          "response": []
+        },
+        {
+          "name": "delete playlilst",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{server}}/playlist/:playlistId",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "playlist",
+                ":playlistId"
+              ],
+              "variable": [
+                {
+                  "key": "playlistId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "# Delete Playlist\n\n## Endpoint\n\nDELETE /api/v1/playlist/:playlistId\n\n## Authentication\n\n✅ Required\n\n---\n\n## Purpose\n\nDeletes a playlist.\n\nVideos themselves are **not deleted**.\n\nOnly the playlist owner can delete it.\n\n---\n\n## Path Parameters\n\n| Name | Type |\n| --- | --- |\n| playlistId | ObjectId |\n\n---\n\n## Success Response\n\nStatus: **200 OK**\n\nReturns deletion confirmation.\n\n---\n\n## Error Responses\n\n400\n\n- Invalid playlistId\n    \n\n404\n\n- Playlist not found\n    \n\n---\n\n## Frontend Notes\n\nShow a confirmation dialog before deleting."
+          },
+          "response": []
+        },
+        {
+          "name": "add video to playlist",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{server}}/playlist/:playlistId/video/:videoId",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "playlist",
+                ":playlistId",
+                "video",
+                ":videoId"
+              ],
+              "variable": [
+                {
+                  "key": "playlistId",
+                  "value": "6a4a57baf92b0cd3138a0f11"
+                },
+                {
+                  "key": "videoId",
+                  "value": "6a4a5b6b7d23a3cc3be8107b"
+                }
+              ]
+            },
+            "description": "# Add Video To Playlist\n\n## Endpoint\n\nPOST /api/v1/playlist/:playlistId/video/:videoId\n\n## Authentication\n\n✅ Required\n\n---\n\n## Purpose\n\nAdds a video to a playlist.\n\nA playlist can contain videos uploaded by any user.\n\nDuplicate videos are not added.\n\nOnly the playlist owner can modify the playlist.\n\n---\n\n## Path Parameters\n\n| Name | Type |\n| --- | --- |\n| playlistId | ObjectId |\n| videoId | ObjectId |\n\n---\n\n## Success Response\n\nStatus: **200 OK**\n\nReturns updated playlist.\n\n---\n\n## Error Responses\n\n400\n\n- Invalid playlistId\n    \n- Invalid videoId\n    \n- Video already exists in playlist\n    \n\n404\n\n- Playlist not found\n    \n- Video not found\n    \n\n---\n\n## Frontend Notes\n\nRefresh the playlist after adding a video."
+          },
+          "response": []
+        },
+        {
+          "name": "remove video from playlist",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{server}}/playlist/:playlistId/video/:videoId",
+              "host": [
+                "{{server}}"
+              ],
+              "path": [
+                "playlist",
+                ":playlistId",
+                "video",
+                ":videoId"
+              ],
+              "variable": [
+                {
+                  "key": "playlistId",
+                  "value": ""
+                },
+                {
+                  "key": "videoId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "# Remove Video From Playlist\n\n## Endpoint\n\nDELETE /api/v1/playlist/:playlistId/video/:videoId\n\n## Authentication\n\n✅ Required\n\n---\n\n## Purpose\n\nRemoves a video from a playlist.\n\nOnly the playlist owner can perform this operation.\n\n---\n\n## Path Parameters\n\n| Name | Type |\n| --- | --- |\n| playlistId | ObjectId |\n| videoId | ObjectId |\n\n---\n\n## Success Response\n\nStatus: **200 OK**\n\nReturns updated playlist.\n\n---\n\n## Error Responses\n\n400\n\n- Invalid playlistId\n    \n- Invalid videoId\n    \n\n404\n\n- Playlist not found\n    \n- Video not found\n    \n\n---\n\n## Frontend Notes\n\nRemove the video from the displayed playlist immediately after a successful response."
+          },
+          "response": []
+        }
+      ],
+      "description": "# Playlist APIs\n\nAllows authenticated users to organize videos into playlists.\n\nIncludes:\n\n- Create Playlist\n    \n- Update Playlist\n    \n- Delete Playlist\n    \n- Get Playlist\n    \n- Get User Playlists\n    \n- Add Video to Playlist\n    \n- Remove Video from Playlist"
+    }
+  ]
+}

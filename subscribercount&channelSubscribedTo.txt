@@ -1,0 +1,7 @@
+subscriber | channel
+
+suppose I want to count subscriber of a channel => get all document of channel (a,cwh)(b,cwh),(c,cwh),(d,cwh)..... (keep channel constant)
+
+suppose I want to get subscribed channel of a user => get all document with subscriber (a,cwh),(a,fcc),(a,cac).... (keep subscriber constant)
+
+suppose 'c' user want to subscribe cwc => create document with subscriber = 'c' and channel = 'cwc'
