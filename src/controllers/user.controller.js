@@ -5,6 +5,7 @@ import {uploadOnCloudinary, deleteFromCloudinary} from '../utils/cloudinary.js'
 import {ApiResponse} from '../utils/apiResponse.js'
 import jwt from 'jsonwebtoken'
 import mongoose from "mongoose";
+import getWatchedHistoryVideosPipeline from '../pipelines/watchHistory.pipeline.js'
 
 const userRegister = asyncHandler(async(req,res)=>{
     // 1. get user details of user from frontend
@@ -463,47 +464,36 @@ return res.status(200).json(
     
 })
 
-const getWatchHistory = asyncHandler(async(req,res)=>{
-    const user = User.aggregate([
-        {
-            $match:{
-                _id:new mongoose.Types.ObjectId(req.user._id) // we need to convert req.user._id(which is string) into mongodb object type
-            }
-        },
-        {  // 
-            $lookup:{
-                from:"videos", // from which schema you wanna lookup
-                localField:"watchHistory",
-                foreignField:"_id",
-                as:"watchHistory",
-                pipeline:[ // nested pipeline
-                    {
-                        $lookup:{
-                            from:"users", // kaha se lana hai
-                            localField:"owner", // cause we want owner detail which is nothing but user
-                            foreignField:"_id",
-                            as:"owner",
-                            // owner will contain selected fields from user
-                            pipeline:[
-                                {
-                                    $project:{
-                                        username:1,
-                                        fullname:1,
-                                        avatar:1
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                ]
-            }
-        }
-    ])
+const getWatchHistory = asyncHandler(async (req, res) => {
+    const userId = req.user?._id;
+
+    if (!userId)
+        throw new ApiError(401, "Unauthorized request");
+
+    if (!mongoose.Types.ObjectId.isValid(userId))
+        throw new ApiError(400, "Invalid user id");
+
+    const pipeline = getWatchedHistoryVideosPipeline({
+        userId,
+        limit: 150
+    });
+
+    const history = await User.aggregate(pipeline);
+
+    const watchedVideos = history[0]?.watchedVideos || [];
+
+    // Optional: newest watched first
+    watchedVideos.reverse();
 
     return res.status(200).json(
-        new ApiResponse(200,user[0].watchHistory,"Watch history fetched successfully")
-    )
-})
+        new ApiResponse(
+            200,
+            watchedVideos[0],
+            "Watch history fetched successfully"
+        )
+    );
+});
+
 
 export { userRegister , login, logout, regenerateTokens, changeCurrentPassword, getUser, updateAccountDetail, updateAvatar, updateCoverImage
     ,getUserChannelProfile, getWatchHistory

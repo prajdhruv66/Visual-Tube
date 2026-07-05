@@ -44,7 +44,11 @@ const likeSchema = new Schema({
 // { video: 1, likedBy: 1 }
 likeSchema.index(
     { video: 1, likedBy: 1 },
-    { unique: true }
+    { unique: true,
+        partialFilterExpression:{
+            video:{$exists : true}
+        }
+     }
 );
 
 // avoid dupicate comment like by same user ....
@@ -53,33 +57,22 @@ likeSchema.index(
     { unique: true, // for preventing race condition...
         // creates index only if video exists | if multiple(likedBy and comment) => it can create duplicate (video,Likeby) index
         partialFilterExpression:{
-            video:{$exists:true}
+            comment:{$exists:true}
         }
      }
 );
 
-likeSchema.index(
-    {comment:1,likedBy:1},{
-        unique:true,
-        partialFilterExpression:{
-            comment:{$exists:true}
-        }
-    }
-)
-
 // validation => only one of the (video or comment exists) | as user can like either comment or video
-likeSchema.pre("validate", function (next) {
+likeSchema.pre("validate", function () {
     const targets = [this.video, this.comment];
 
     const filledTargets = targets.filter(Boolean);
 
     if (filledTargets.length !== 1) {
         return next(
-            new Error("Like must belong to exactly one of: video, comment, or tweet.")
+            new Error("Like must belong to exactly one of: video, comment")
         );
     }
-
-    next();
 });
 
 export const Like = mongoose.model("Like",likeSchema);

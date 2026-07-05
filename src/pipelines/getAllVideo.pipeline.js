@@ -25,7 +25,13 @@ const getAllVideoPipeline = ({
 
     let pipeline=[
         {   // get all publiced video first
-            $match:{ isPublished: true}
+            $match:{ isPublished: true,
+                ...(search && {
+                $text: {
+                    $search: search
+                }
+             })
+            }
         },
         {   // get owner details || subscriberCount, username, avatar
             $lookup:{ 
@@ -85,12 +91,6 @@ const getAllVideoPipeline = ({
 
 
     if(search){
-        // push search query just after the first match, so that there'll be no unnecessary docs
-        pipeline.splice(1,0,{
-            $match:{
-                $text:{$search:search}
-            }
-        })
 
         // add score field => later used to sort by textscore
         pipeline.push({

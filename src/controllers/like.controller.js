@@ -1,9 +1,10 @@
 import mongoose from "mongoose";
-import { ApiError } from "../utils/apiErrors";
-import asyncHandler from "../utils/asyncHandler";
-import { Video } from "../models/video.model";
-import { Like } from "../models/likes.model";
-import { ApiResponse } from "../utils/apiResponse";
+import { ApiError } from "../utils/apiErrors.js";
+import asyncHandler from "../utils/asyncHandler.js";
+import { Video } from "../models/video.model.js";
+import { Like } from "../models/likes.model.js";
+import { ApiResponse } from "../utils/apiResponse.js";
+import { Comment } from "../models/comment.model.js";
 
 const toggleVidoeLike = asyncHandler(async(req,res)=>{
     const videoId = req.params?.videoId;
@@ -25,7 +26,7 @@ const toggleVidoeLike = asyncHandler(async(req,res)=>{
     }
 
     // delete like document : undo like
-    const undoLikeResponse = await Like.findOneAndDelete({_id:videoId, likeBy:req.user?._id});
+    const undoLikeResponse = await Like.findOneAndDelete({video:videoId, likedBy:req.user?._id});
     if(!undoLikeResponse) throw new ApiError(400,"bad request | Cannot undo like... ")  
     
         return res.status(200).json(

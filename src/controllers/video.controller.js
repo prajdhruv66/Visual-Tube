@@ -1,9 +1,13 @@
 import mongoose from "mongoose";
-import { Video } from "../models/video.model";
-import { ApiError } from "../utils/apiErrors";
-import { ApiResponse } from "../utils/apiResponse";
-import asyncHandler from "../utils/asyncHandler";
-import { deleteFromCloudinary, uploadOnCloudinary } from "../utils/cloudinary";
+import { Video } from "../models/video.model.js";
+import { ApiError } from "../utils/apiErrors.js";
+import { ApiResponse } from "../utils/apiResponse.js";
+import asyncHandler from "../utils/asyncHandler.js";
+import { deleteFromCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js";
+import { User } from "../models/user.model.js";
+import { Like } from "../models/likes.model.js";
+import recommendedPipeline from "../pipelines/personlised.pipeline.js";
+import { getAllVideoPipeline } from "../pipelines/getAllVideo.pipeline.js";
 
 const uploadVideo = asyncHandler(async(req,res)=>{
 
@@ -12,10 +16,15 @@ const uploadVideo = asyncHandler(async(req,res)=>{
     const thumbnail = req.files?.thumbnail?.[0]
 
     // 2. Get video details from request body
-    const {title,description,tags,isPublished} = req.body
+    const {title,description,tags} = req.body
+
+    const isPublished =
+    req.body.isPublished !== undefined
+        ? req.body.isPublished === "true"
+        : false;
 
     // 3. Validate required fields
-    if(!title?.trim() || !description?.trim() || !tags || isPublished)
+    if(!title?.trim() || !description?.trim() || !tags || !isPublished)
         throw new ApiError(400,"Required fields missing")
 
     // 4. Validate uploaded files
@@ -180,13 +189,10 @@ const watchVideo = asyncHandler(async (req, res) => {
         }
 
         // Update user's watch history
-        const updatedUser = await User.findByIdAndUpdate(
+        await User.findByIdAndUpdate(
             req.user._id,
             {
                 $pull: {
-                    watchHistory: videoId
-                },
-                $push: {
                     watchHistory: videoId
                 }
             },
@@ -195,7 +201,16 @@ const watchVideo = asyncHandler(async (req, res) => {
             }
         );
 
-        if (!updatedUser) {
+        const pushVideo = await User.findByIdAndUpdate(req.user._id,
+            {
+                $push:{
+                    watchHistory: videoId
+                }
+            },
+            {session}
+        )
+
+        if (!pushVideo) {
             throw new ApiError(404, "Cannot update watch history");
         }
 
@@ -437,7 +452,7 @@ const getPersonalisedVideos = asyncHandler(async (req, res) => {
         throw new ApiError(404, "No user found");
 
     const page = Math.max(Number(req.query.page) || 1, 1);
-    const limit = 10;
+    const limit = Math.min(Number(req.query.limit)||10,50);
 
     // Get last 5 watched videos with their tags
     const recentVideos = await User.aggregate([
@@ -511,36 +526,6 @@ const getPersonalisedVideos = asyncHandler(async (req, res) => {
             200,
             recommendedVideos[0],
             "Recommended videos fetched successfully"
-        )
-    );
-});
-
-const getWatchHistory = asyncHandler(async (req, res) => {
-    const userId = req.user?._id;
-
-    if (!userId)
-        throw new ApiError(401, "Unauthorized request");
-
-    if (!mongoose.Types.ObjectId.isValid(userId))
-        throw new ApiError(400, "Invalid user id");
-
-    const pipeline = getWatchedHistoryVideosPipeline({
-        userId,
-        limit: 150
-    });
-
-    const history = await User.aggregate(pipeline);
-
-    const watchedVideos = history[0]?.watchedVideos || [];
-
-    // Optional: newest watched first
-    watchedVideos.reverse();
-
-    return res.status(200).json(
-        new ApiResponse(
-            200,
-            watchedVideos[0],
-            "Watch history fetched successfully"
         )
     );
 });
@@ -632,4 +617,4 @@ const getVideoLikes = asyncHandler(async (req, res) => {
     );
 });
 
-export {uploadVideo, getVideoById, watchVideo, updateThumbnail, updateVideoDetial, toggleIsPublish, deleteVideo, getVideoFeed, getPersonalisedVideos, getWatchHistory, getVideoLikes}
+export {uploadVideo, getVideoById, watchVideo, updateThumbnail, updateVideoDetial, toggleIsPublish, deleteVideo, getVideoFeed, getPersonalisedVideos, getVideoLikes}

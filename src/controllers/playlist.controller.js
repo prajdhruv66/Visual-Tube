@@ -1,6 +1,6 @@
 import asyncHandler from '../utils/asyncHandler.js'
-import ApiError from '../utils/apiErrors.js'
-import ApiResponse from '../utils/apiResponse.js'
+import {ApiError} from '../utils/apiErrors.js'
+import {ApiResponse} from '../utils/apiResponse.js'
 import mongoose from 'mongoose';
 import { Playlist } from '../models/playlist.model.js';
 import { Video } from '../models/video.model.js'
@@ -280,4 +280,4 @@ const getAllUserPlaylists = asyncHandler(async (req, res) => {
     );
 });
 
-export { createPlaylist, addVideoInPlaylist, removeVideoFromPlaylist, deletePlaylist, updatePlaylist, getPlaylistById}
+export { createPlaylist, addVideoInPlaylist, removeVideoFromPlaylist, deletePlaylist, updatePlaylist, getPlaylistById, getAllUserPlaylists}

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { verifyJWT } from "../middlewares/auth.middleware.js";
+import { verifyJwt } from "../middlewares/auth.middleware.js";
 
 import {
     createPlaylist,
@@ -14,7 +14,7 @@ import {
 const PlaylistRouter = Router();
 
 // All playlist routes require authentication
-PlaylistRouter.use(verifyJWT);
+PlaylistRouter.use(verifyJwt);
 
 PlaylistRouter.route("/")
     .post(createPlaylist);

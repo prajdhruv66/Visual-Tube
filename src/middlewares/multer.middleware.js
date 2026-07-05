@@ -1,7 +1,7 @@
 // multer.middleware.js
 
 import multer from "multer"
-import { ApiError } from "../utils/ApiError.js"
+import { ApiError } from "../utils/apiErrors.js"
 
 
 const storage = multer.diskStorage({

@@ -94,5 +94,8 @@ const recommendedPipeline = ({
             }
         }
 
-    ]
+    ];
+    return pipeline
 }
+
+export default recommendedPipeline
