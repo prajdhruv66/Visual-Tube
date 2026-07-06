@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ThumbsUp } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useVideo } from '../hooks/useVideo';
 import { useVideoLike } from '../hooks/useVideoLike';
 import { useSubscribeToggle } from '../hooks/useSubscribeToggle';
@@ -20,8 +21,18 @@ import { useAuth } from '@/context/AuthContext';
 export default function WatchPage() {
   const { videoId } = useParams<{ videoId: string }>();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const { data: video, isLoading, isError, error, refetch, invalidate } = useVideo(videoId);
   const [showFullDescription, setShowFullDescription] = useState(false);
+  
+  const handleWatchRegistered = () => {
+    console.log("handleWatchRegistered called - invalidating and refetching history");
+    invalidate();
+    // Explicitly refetch the history query when watch is registered
+    queryClient.refetchQueries({ queryKey: ['history'] }).then(() => {
+      console.log("History refetch completed");
+    });
+  };
 
   const owner = video && typeof video.owner !== 'string' ? video.owner : null;
   const channelQuery = useChannelProfile(owner?.username);
@@ -42,7 +53,7 @@ export default function WatchPage() {
           src={video.videoFile}
           poster={video.thumbnail}
           title={video.title}
-          onWatchRegistered={invalidate}
+          onWatchRegistered={handleWatchRegistered}
         />
 
         <h1 className="mt-4 font-display text-xl font-semibold text-text-primary">{video.title}</h1>

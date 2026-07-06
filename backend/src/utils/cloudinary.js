@@ -2,11 +2,18 @@ import {v2 as cloudinary} from 'cloudinary'
 import fs from 'node:fs';
 import { ApiError } from './apiErrors.js';
 
-cloudinary.config({
-    cloud_name:process.env.CLOUDINARY_CLOUD_NAME,
-    api_key:process.env.CLOUDINARY_API_KEY,
-    api_secret:process.env.CLOUDINARY_API_SECRET
-})
+// Validate Cloudinary configuration
+const CLOUDINARY_CONFIG = {
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+};
+
+if (!CLOUDINARY_CONFIG.cloud_name || !CLOUDINARY_CONFIG.api_key || !CLOUDINARY_CONFIG.api_secret) {
+    console.warn('WARNING: Cloudinary credentials are missing or incomplete');
+}
+
+cloudinary.config(CLOUDINARY_CONFIG)
 
 const uploadOnCloudinary = async (localFilePath)=>{
     try {
@@ -21,7 +28,10 @@ const uploadOnCloudinary = async (localFilePath)=>{
         return response
         
     } catch (error) {
-        fs.unlinkSync(localFilePath) // unlink or delete files as failed to upload and in sync way as we don't wanna move forward without delete
+        console.error("Cloudinary upload error:", error.message);
+        if (fs.existsSync(localFilePath)) {
+            fs.unlinkSync(localFilePath) // unlink or delete files as failed to upload and in sync way as we don't wanna move forward without delete
+        }
         return null;
     }
 }

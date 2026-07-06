@@ -37,13 +37,17 @@ const userRegister = asyncHandler(async(req,res)=>{
     // 4. check for images for avatar through multer and check for avatar
     
     const avatarPath = req.files?.avatar?.[0]?.path // multer middleware(upload) adds additional fields to req like files
-    console.log(req.files)
+    console.log("Registration request - files received:", req.files)
+    console.log("Avatar path:", avatarPath)
     const coverImagePath = req.files?.coverImage?.[0]?.path
 
     if(!avatarPath) throw new ApiError(400,"avatar must be uploaded")
 
     // 5. upload avatar in cloudinary 
+    console.log("Uploading avatar to Cloudinary from:", avatarPath)
     const avatar = await uploadOnCloudinary(avatarPath)
+    if(!avatar) throw new ApiError(500,"Failed to upload avatar to cloud - check Cloudinary configuration and logs")
+    
     const coverImage = coverImagePath ? await uploadOnCloudinary(coverImagePath) : null
 
     // 6. create user object to upload it to db
@@ -485,9 +489,6 @@ const getWatchHistory = asyncHandler(async (req, res) => {
     const history = await User.aggregate(pipeline);
 
     const watchedVideos = history[0]?.watchedVideos || [];
-
-    // Optional: newest watched first
-    watchedVideos.reverse();
 
     return res.status(200).json(
         new ApiResponse(

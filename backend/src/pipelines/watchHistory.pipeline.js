@@ -11,7 +11,9 @@ const getWatchedHistoryVideosPipeline = ({userId,limit})=>{
         {
             $project: {
                 recentVideoIds: {
-                    $slice: ["$watchHistory", -limit]
+                    $reverseArray: {
+                        $slice: ["$watchHistory", -limit]
+                    }
                 }
             }
         },
@@ -56,6 +58,28 @@ const getWatchedHistoryVideosPipeline = ({userId,limit})=>{
                         }
                     }
                 ]
+            }
+        },
+        {
+            $addFields: {
+                watchedVideos: {
+                    $map: {
+                        input: "$recentVideoIds",
+                        as: "id",
+                        in: {
+                            $arrayElemAt: [
+                                {
+                                    $filter: {
+                                        input: "$watchedVideos",
+                                        as: "video",
+                                        cond: { $eq: ["$$video._id", "$$id"] }
+                                    }
+                                },
+                                0
+                            ]
+                        }
+                    }
+                }
             }
         },
         {

@@ -174,6 +174,9 @@ const getVideoById = asyncHandler(async(req,res)=>{
 
 const watchVideo = asyncHandler(async (req, res) => {
     const videoId = req.params?.videoId;
+    const userId = req.user?._id;
+    
+    console.log("watchVideo called - videoId:", videoId, "userId:", userId);
 
     if (!videoId) {
         throw new ApiError(400, "Cannot get videoId from param");
@@ -231,6 +234,7 @@ const watchVideo = asyncHandler(async (req, res) => {
 
         // Save both changes
         await session.commitTransaction();
+        console.log("Watch history updated successfully for user:", userId);
 
         return res.status(200).json(
             new ApiResponse(

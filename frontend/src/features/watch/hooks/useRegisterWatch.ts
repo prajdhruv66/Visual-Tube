@@ -24,10 +24,15 @@ export function useRegisterWatch(
       if (hasRegisteredRef.current) return;
       if (el.duration && el.currentTime >= el.duration * 0.2) {
         hasRegisteredRef.current = true;
+        console.log("Registering watch for video:", videoId);
         videoApi
           .registerWatch(videoId)
-          .then(() => onRegistered?.())
-          .catch(() => {
+          .then(() => {
+            console.log("Watch registered successfully, calling onRegistered callback");
+            onRegistered?.();
+          })
+          .catch((error) => {
+            console.error("Error registering watch:", error);
             /* non-critical: a missed watch registration shouldn't disrupt playback */
           });
       }
