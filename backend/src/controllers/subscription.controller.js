@@ -98,18 +98,8 @@ const toggleSubscribe = asyncHandler(async(req,res)=>{
 const getSubscribedChannel = asyncHandler(async(req,res)=>{
 
     // 1. Get all channels subscribed by current logged-in user
-    //    Subscription model stores relationship:
-    //    {
-    //       subscriber: User A,
-    //       channel: User B
-    //    }
-    //
-    //    Meaning:
-    //    User A has subscribed to User B's channel
-
     const subscribedChannels = await Subscription.aggregate([
         // 2. Find subscription documents where current user is subscriber
-        //    We convert string id into ObjectId because MongoDB stores references as ObjectId
         {
             $match:{
                 subscriber:new mongoose.Types.ObjectId(req.user._id)
@@ -117,33 +107,17 @@ const getSubscribedChannel = asyncHandler(async(req,res)=>{
         },
     
         // 3. Get channel owner details from User collection
-        //
-        //    Subscription has only:
-        //    channel: ObjectId
-        //
-        //    We use $lookup to get:
-        //    username, avatar, etc. from User collection
         {
             $lookup:{
                 from:"users",
-                // Subscription.channel
                 localField:"channel",
-                // User._id
                 foreignField:"_id",
                 as:"channelAsUser",
 
                 // 4. Pipeline inside User lookup
-                //    Here we are working on the channel owner's User document
                 pipeline:[
 
                     // 5. Find all subscribers of this channel
-                    //
-                    //    User._id
-                    //          |
-                    //          ↓
-                    //    Subscription.channel
-                    //
-                    //    This gives all users who subscribed to this channel
                     {
                         $lookup:{
                             from:"subscriptions",
@@ -155,18 +129,9 @@ const getSubscribedChannel = asyncHandler(async(req,res)=>{
 
 
                     // 6. Calculate channel statistics
-                    //
-                    //    subscribers is an array:
-                    //
-                    //    [
-                    //      {subscriber:A, channel:B},
-                    //      {subscriber:C, channel:B}
-                    //    ]
-                    //
-                    //    $size gives number of subscribers
                     {
                         $addFields:{
-                            subscriberCount:{
+                            subscribersCount:{
                                 $size:"$subscribers"
                             }
                         }
@@ -174,12 +139,12 @@ const getSubscribedChannel = asyncHandler(async(req,res)=>{
 
 
                     // 7. Return only required channel fields
-                    //    Remove unnecessary User fields
                     {
                         $project:{
                             username:1,
+                            fullname:1,
                             avatar:1,
-                            subscriberCount:1
+                            subscribersCount:1
                         }
                     }
                 ]
@@ -188,58 +153,32 @@ const getSubscribedChannel = asyncHandler(async(req,res)=>{
 
 
         // 8. $lookup always returns an array
-        //
-        //    Before:
-        //    channelAsUser:[
-        //        {username:"abc"}
-        //    ]
-        //
-        //    After:
-        //    channelAsUser:{
-        //        username:"abc"
-        //    }
         {
             $unwind:"$channelAsUser"
         },
 
 
-        // 9. Shape final API response
-        //
-        //    Create cleaner output:
-        //
-        //    {
-        //       channel:{
-        //          username,
-        //          avatar,
-        //          subscriberCount
-        //       }
-        //    }
+        // 9. Shape final API response flat as expected by frontend ChannelProfile[]
         {
             $project:{
-                _id:0,
-                channel:"$channelAsUser"
+                _id:"$channelAsUser._id",
+                username:"$channelAsUser.username",
+                fullname:"$channelAsUser.fullname",
+                avatar:"$channelAsUser.avatar",
+                subscribersCount:"$channelAsUser.subscribersCount",
+                isSubscribed: { $literal: true }
             }
         }
 
     ])
 
-
-    // 10. If no subscribed channels found
-    if(!subscribedChannels.length)
-        throw new ApiError(
-            404,
-            "Cannot find subscribed channels"
-        )
-
-    // 11. Send final response
+    // 10. Send final response (empty list is normal, not a 404 error)
     return res.status(200).json(
-
         new ApiResponse(
             200,
-            subscribedChannels[0],
+            subscribedChannels,
             "Channels fetched successfully!"
         )
-
     )
 
 })

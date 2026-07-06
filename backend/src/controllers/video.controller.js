@@ -24,7 +24,7 @@ const uploadVideo = asyncHandler(async(req,res)=>{
         : false;
 
     // 3. Validate required fields
-    if(!title?.trim() || !description?.trim() || !tags || !isPublished)
+    if(!title?.trim() || !description?.trim() || !tags)
         throw new ApiError(400,"Required fields missing")
 
     // 4. Validate uploaded files
@@ -77,15 +77,13 @@ const uploadVideo = asyncHandler(async(req,res)=>{
     }catch(error){
 
         // 12. Delete already uploaded files if database/cloudinary process fails
-        const video_publicId = savedVideo.split("/").pop().split(".")[0]
-        const thumbnail_publicId = thumbnail.split("/").pop().split(".")[0]
-        if(video_publicId)
+        if(savedVideo?.public_id)
             await deleteFromCloudinary(savedVideo.public_id)
 
-        if(thumbnail_publicId)
+        if(savedThumbnail?.public_id)
             await deleteFromCloudinary(savedThumbnail.public_id)
 
-        throw new ApiError(500,"Something went wrong while uploading video")
+        throw new ApiError(500, error?.message || "Something went wrong while uploading video")
     }
 })
 
@@ -107,7 +105,7 @@ const getVideoById = asyncHandler(async(req,res)=>{
                 localField:'owner',
                 foreignField:'_id',
                 as:'ownerDetails',
-                // can make seprate pipeline to fetch subscriberCount|subscribedToCount etc...
+                // can make seprate pipeline to fetch subscribersCount|subscribedToCount etc...
                 pipeline:[
                     {
                        $lookup:{
@@ -126,7 +124,8 @@ const getVideoById = asyncHandler(async(req,res)=>{
                         $project:{
                             username:1,
                             avatar:1,
-                            subscriberCount:1,
+                            fullname:1,
+                            subscribersCount:"$subscriberCount",
                         }
                     }
                 ]
@@ -136,8 +135,16 @@ const getVideoById = asyncHandler(async(req,res)=>{
             $unwind:'$ownerDetails'
         },
         {
+            $lookup:{
+                from:'likes',
+                localField:'_id',
+                foreignField:'video',
+                as:'videoLikes'
+            }
+        },
+        {
             $project:{
-                _id:0,
+                _id:1,
                 title:1,
                 description:1,
                 tags:1,
@@ -145,7 +152,15 @@ const getVideoById = asyncHandler(async(req,res)=>{
                 thumbnail:1,
                 duration:1,
                 views:1,
-                ownerDetails:1
+                owner:'$ownerDetails',
+                likesCount:{$size:'$videoLikes'},
+                isLiked:{
+                    $cond:{
+                        if:{$in:[req.user?._id,'$videoLikes.likedBy']},
+                        then:true,
+                        else:false
+                    }
+                }
             }
         }
     ])
@@ -422,16 +437,18 @@ const deleteVideo = asyncHandler(async(req,res)=>{
 })
 
 const getVideoFeed = asyncHandler(async (req, res) => {
-    const { mode, search } = req.query;
+    const { mode, search, channelId } = req.query;
 
     const page = Math.max(Number(req.query.page) || 1, 1);
-    const limit = 10;
+    const limit = Math.min(Number(req.query.limit) || 10, 50);
 
     const feedPipeline = getAllVideoPipeline({
         limit,
         page,
         search,
-        mode
+        mode,
+        channelId,
+        userId: req.user?._id
     });
 
     const videos = await Video.aggregate(feedPipeline);
@@ -439,7 +456,11 @@ const getVideoFeed = asyncHandler(async (req, res) => {
     return res.status(200).json(
         new ApiResponse(
             200,
-            videos[0],
+            {
+                ...videos[0],
+                page,
+                limit
+            },
             "Video feed fetched successfully."
         )
     );
@@ -494,9 +515,12 @@ const getPersonalisedVideos = asyncHandler(async (req, res) => {
 
     // If user has no watch history
     if (!recentVideos.length || !recentVideos[0].recentVideos.length) {
-        throw new ApiError(
-            404,
-            "No watch history found to generate recommendations"
+        return res.status(200).json(
+            new ApiResponse(
+                200,
+                { metadata: [ { totalVideos: 0 } ], videos: [] },
+                "No watch history found to generate recommendations"
+            )
         );
     }
 
@@ -524,7 +548,11 @@ const getPersonalisedVideos = asyncHandler(async (req, res) => {
     return res.status(200).json(
         new ApiResponse(
             200,
-            recommendedVideos[0],
+            {
+                ...recommendedVideos[0],
+                page,
+                limit
+            },
             "Recommended videos fetched successfully"
         )
     );

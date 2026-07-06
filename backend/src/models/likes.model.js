@@ -69,9 +69,7 @@ likeSchema.pre("validate", function () {
     const filledTargets = targets.filter(Boolean);
 
     if (filledTargets.length !== 1) {
-        return next(
-            new Error("Like must belong to exactly one of: video, comment")
-        );
+        throw new Error("Like must belong to exactly one of: video, comment");
     }
 });
 

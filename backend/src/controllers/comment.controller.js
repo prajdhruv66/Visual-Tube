@@ -4,6 +4,7 @@ import asyncHandler from "../utils/asyncHandler.js";
 import {Comment} from '../models/comment.model.js';
 import { ApiResponse } from "../utils/apiResponse.js";
 import { Video } from "../models/video.model.js";
+import { Like } from "../models/likes.model.js";
 
 const addComment = asyncHandler(async(req,res)=>{
 
@@ -24,8 +25,17 @@ const addComment = asyncHandler(async(req,res)=>{
 
     if(!addedComment) throw new ApiError(500,"Couldn't add comment");
 
+    const commentWithDetails = await Comment.findById(addedComment._id)
+        .populate("owner", "username avatar fullname");
+
+    const responseData = {
+        ...commentWithDetails.toObject(),
+        likesCount: 0,
+        isLiked: false
+    };
+
     return res.status(201).json(
-        new ApiResponse(201,addedComment,"Comment added successfully... !")
+        new ApiResponse(201,responseData,"Comment added successfully... !")
     )
 
 })
@@ -52,11 +62,25 @@ const editComment = asyncHandler(async(req,res)=>{
     if(!idFromClient) throw new ApiError(400,"Comment Id requried");
     if(!mongoose.Types.ObjectId.isValid(idFromClient)) throw new ApiError(400,"Invalid comment Id");
 
-    const editResponse = await Comment.findOneAndUpdate({ _id:idFromClient, owner:req.user?._id},{content},{returnDocument:'after'});
+    const editResponse = await Comment.findOneAndUpdate(
+        { _id:idFromClient, owner:req.user?._id},
+        {content},
+        {returnDocument:'after'}
+    ).populate("owner", "username avatar fullname");
+
     if(!editResponse) throw new ApiError(404,"Comment not found to edit");
 
+    const likesCount = await Like.countDocuments({ comment: idFromClient });
+    const isLiked = await Like.exists({ comment: idFromClient, likedBy: req.user._id });
+
+    const responseData = {
+        ...editResponse.toObject(),
+        likesCount,
+        isLiked: !!isLiked
+    };
+
     return res.status(200).json(
-        new ApiResponse(200,editResponse,"comment edit successfull... !")
+        new ApiResponse(200,responseData,"comment edit successfull... !")
     );
 })
 
@@ -88,7 +112,8 @@ const getVideoComments = asyncHandler(async(req,res)=>{
                             {
                                 $project: {
                                     username: 1,
-                                    avatar: 1
+                                    avatar: 1,
+                                    fullname: 1
                                 }
                             }
                         ]
@@ -113,9 +138,20 @@ const getVideoComments = asyncHandler(async(req,res)=>{
                 _id:1,
                 content:1,
                 createdAt:1,
-                username:'$commentOwner.username',
-                avatar:'$commentOwner.avatar',
-                likeCounts:1
+                owner:{
+                    _id: '$commentOwner._id',
+                    username: '$commentOwner.username',
+                    avatar: '$commentOwner.avatar',
+                    fullname: '$commentOwner.fullname'
+                },
+                likesCount:'$likeCounts',
+                isLiked:{
+                    $cond:{
+                        if:{$in:[req.user?._id,'$commentLikes.likedBy']},
+                        then:true,
+                        else:false
+                    }
+                }
             }
         },
         {
@@ -141,7 +177,15 @@ const getVideoComments = asyncHandler(async(req,res)=>{
     ]);
 
     return res.status(200).json(
-        new ApiResponse(200,comments[0],"Comments fetched sucessfully !")
+        new ApiResponse(
+            200,
+            {
+                ...comments[0],
+                page,
+                limit
+            },
+            "Comments fetched sucessfully !"
+        )
     )
 })
 

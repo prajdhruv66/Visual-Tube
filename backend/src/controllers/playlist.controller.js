@@ -220,7 +220,7 @@ const getPlaylistById = asyncHandler(async(req,res)=>{
             owner: {
                 _id: "$playlistOwner._id",
                 username: "$playlistOwner.username",
-                fullName: "$playlistOwner.fullName",
+                fullname: "$playlistOwner.fullname",
                 avatar: "$playlistOwner.avatar"
             },
 
@@ -253,13 +253,19 @@ const getAllUserPlaylists = asyncHandler(async (req, res) => {
             }
         },
         {
+            $lookup: {
+                from: "videos",
+                localField: "videos",
+                foreignField: "_id",
+                as: "videos"
+            }
+        },
+        {
             $project: {
                 _id: 1,
                 name: 1,
                 description: 1,
-                totalVideos: {
-                    $size: "$videos"
-                },
+                videos: 1,
                 createdAt: 1,
                 updatedAt: 1
             }

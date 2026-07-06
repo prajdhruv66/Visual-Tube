@@ -1,8 +1,12 @@
+import mongoose from "mongoose";
+
 const getAllVideoPipeline = ({
     limit=10,
     page,
     search,
-    mode
+    mode,
+    channelId,
+    userId
 })=>{
     let paginateStage=        
             {   // for pagination
@@ -25,15 +29,21 @@ const getAllVideoPipeline = ({
 
     let pipeline=[
         {   // get all publiced video first
-            $match:{ isPublished: true,
+            $match:{ 
+                ...(channelId ? {
+                    owner: new mongoose.Types.ObjectId(channelId),
+                    ...(userId?.toString() !== channelId.toString() && { isPublished: true })
+                } : {
+                    isPublished: true
+                }),
                 ...(search && {
-                $text: {
-                    $search: search
-                }
-             })
+                    $text: {
+                        $search: search
+                    }
+                })
             }
         },
-        {   // get owner details || subscriberCount, username, avatar
+        {   // get owner details || subscribersCount, username, avatar, fullname
             $lookup:{ 
                 from:"users",
                 localField:"owner",
@@ -47,12 +57,13 @@ const getAllVideoPipeline = ({
                     as:"subscribers"
                     }},
                 {$addFields:{
-                        subscriberCount:{$size: '$subscribers'},
+                        subscribersCount:{$size: '$subscribers'},
                     }},
                 {$project:{
                     username:1,
+                    fullname:1,
                     avatar:1,
-                    subscriberCount:1,
+                    subscribersCount:1,
                     }}
                 ]
 
@@ -69,9 +80,9 @@ const getAllVideoPipeline = ({
                 as:"videoLikes"
             }
         },
-        {   // add LikeCount
+        {   // add likesCount
             $addFields:{
-                likeCount:{$size:'$videoLikes'}
+                likesCount:{$size:'$videoLikes'}
             }
         },
         {    // add projection
@@ -83,8 +94,9 @@ const getAllVideoPipeline = ({
             duration: 1,           // Video duration
             views: 1,              // View count
             createdAt: 1,          // Upload date
-            likeCount: 1,          //likeCount
-            owner: 1               // username, avatar, subscriberCount and description
+            likesCount: 1,         //likesCount
+            owner: 1,              // username, avatar, subscribersCount and fullname
+            isPublished: 1
                 }
         }
     ];

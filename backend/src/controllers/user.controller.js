@@ -92,17 +92,18 @@ const login = asyncHandler(async(req,res)=>{
     // 1. take data from req.body
     const { email, username, password} = req.body
 
-    // 2. check if required fields are there
-    if(!email || !username || !password) {
-        throw new ApiError(400,"email, username and password are all required")
+    // 2. check if required fields are there (either email or username, and password)
+    if((!email && !username) || !password) {
+        throw new ApiError(400,"Email or username and password are required")
     }
 
-    //3. check if user already exist
-    const user = await User.findOne({
-        email: email,
-        username: username
-    })
-    if(!user) throw new ApiError(404,"please register first to login")
+    //3. check if user already exists
+    const query = {};
+    if (email) query.email = email;
+    if (username) query.username = username;
+
+    const user = await User.findOne(query)
+    if(!user) throw new ApiError(404,"Please register first to login")
 
     // 4. do password validation
     // note: Mongoose Schema Instance Method are used with document instance (a single record from MongoDB), not on the model itself.
@@ -116,7 +117,8 @@ const login = asyncHandler(async(req,res)=>{
     // 6. send refresh token and access token to cookie and finally send response
     const option = { // makes cookie unmodifiable and secure
         httpOnly:true,
-        secure:true
+        secure:false,
+        sameSite:"lax"
     }
 
     // why sending response: for mobile application...
@@ -158,7 +160,7 @@ const logout = asyncHandler(async(req,res)=>{
 
     const option = { // makes cookie unmodifiable and secure
         httpOnly:true,
-        secure:true
+        secure:false
     }
     return res.status(200).clearCookie("accessToken",option).clearCookie("refreshToken",option)
             .json(
@@ -171,37 +173,38 @@ const logout = asyncHandler(async(req,res)=>{
 })
 
 const regenerateTokens = asyncHandler(async(req,res)=>{
-    // 1. take refreshToken from req.cookies() or req.body() 
-    // 2. check if token exist else throw ApiError()
-    // 3. verify refreshToken using jwt and get ._id from decoded
-    // 4. get user using refresh token 
-    // 5. if no user found, throw ApiError()
-    // 6. now apply generateAccessAndRefreshTokens() function to re-gererate both tokens
-    // 7. send ApiResponse()
-
-    const clientRefreshToken = req.cookie.refreshToken || req.body.refreshToken
-    if(!refreshToken) throw new ApiError(401,"Unauthorized access, cannot get refresh token from client side")
+    // 1. take refreshToken from req.cookies or req.body 
+    const clientRefreshToken = req.cookies?.refreshToken || req.body.refreshToken
+    if(!clientRefreshToken) throw new ApiError(401,"Unauthorized access, cannot get refresh token from client side")
 
     try {
         const decodedToken = jwt.verify(clientRefreshToken,process.env.REFERESH_TOKEN_SECRET)
-        if(!decodedToken) throw new ApiError(500,"Unauthorized, Cannot verify refresh token")
+        if(!decodedToken) throw new ApiError(401,"Unauthorized, Cannot verify refresh token")
         
         const user = await User.findById(decodedToken?._id)
-        if(!user) throw new ApiError(401,"Unauthorized acess, refresh token expired.")
+        if(!user) throw new ApiError(401,"Unauthorized access, refresh token expired.")
     
-        if(!(user?.refreshToken === clientRefreshToken)) throw new ApiError(401,"Unauthorized acess, refresh token expired.")
+        if(user?.refreshToken !== clientRefreshToken) throw new ApiError(401,"Unauthorized access, refresh token expired.")
         
-        const {newAccessToken, newRefreshToken} = await generateAccessAndRefreshTokens(decodedToken)
+        const {accessToken, refreshToken} = await generateAccessAndRefreshTokens(user._id)
+        
+        const option = {
+            httpOnly:true,
+            secure:false,
+            sameSite:"lax"
+        }
     
         return res.status(200)
+                    .cookie("accessToken",accessToken,option)
+                    .cookie("refreshToken",refreshToken,option)
                     .json(
                         new ApiResponse(200,
-                            {newAccessToken,refreshToken:newRefreshToken},
+                            {accessToken,refreshToken},
                             "Tokens refreshed..."
                         )
                     )
     } catch (error) {
-        throw new ApiError(500,"Something went wrong while regenerating tokens",error.message)
+        throw new ApiError(401,"Something went wrong while regenerating tokens",error.message)
     }
     
 })
@@ -243,7 +246,7 @@ const updateAccountDetail = asyncHandler(async(req,res)=>{
     },{new:true}).select("-password");
     //{ new: true } tells Mongoose to return the updated document after the update is applied.
 
-    return res.status(200).json(new ApiResponse(200,"Account details updated successfully"))
+    return res.status(200).json(new ApiResponse(200,user,"Account details updated successfully"))
 
 })
 
@@ -446,8 +449,9 @@ const getUserChannelProfile = asyncHandler(async(req,res)=>{
             fullname:1,
             avatar:1,
             coverImage:1,
-            subscriberCount:1,
+            subscribersCount:"$subscriberCount",
             channelsSubscribedToCount:1,
+            isSubscribed:1,
             email:1
         }
     }
@@ -488,7 +492,7 @@ const getWatchHistory = asyncHandler(async (req, res) => {
     return res.status(200).json(
         new ApiResponse(
             200,
-            watchedVideos[0],
+            watchedVideos,
             "Watch history fetched successfully"
         )
     );

@@ -1,4 +1,13 @@
-.env
-node_modules/
-dist/
+**/.env
+**/node_modules/
+frontend/dist/
+backend/dist/
 seed-assets
+# Temporary uploads
+backend/public/temp/
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/

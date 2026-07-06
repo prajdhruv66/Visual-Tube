@@ -28,12 +28,13 @@ const recommendedPipeline = ({
                     as:"subscribers"
                     }},
                     {$addFields:{
-                            subscriberCount:{$size: '$subscribers'},
+                            subscribersCount:{$size: '$subscribers'},
                     }},
                     {$project:{
                         username:1,
+                        fullname:1,
                         avatar:1,
-                        subscriberCount:1,
+                        subscribersCount:1,
                     }}
                 ]
             }
@@ -52,9 +53,9 @@ const recommendedPipeline = ({
             }
         },
 
-        {   // add LikeCount
+        {   // add likesCount
             $addFields:{
-                likeCount:{$size:'$videoLikes'}
+                likesCount:{$size:'$videoLikes'}
             }
         },
 
@@ -67,8 +68,8 @@ const recommendedPipeline = ({
                     duration: 1,           // Video duration
                     views: 1,              // View count
                     createdAt: 1,          // Upload date
-                    likeCount: 1,          //likeCount
-                    owner: 1               // username, avatar, subscriberCount and description
+                    likesCount: 1,         //likesCount
+                    owner: 1               // username, avatar, subscribersCount and fullname
                     }
         },
 

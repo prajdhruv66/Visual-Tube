@@ -32,6 +32,7 @@ const getWatchedHistoryVideosPipeline = ({userId,limit})=>{
                                 {
                                     $project: {
                                         username: 1,
+                                        fullname: 1,
                                         avatar: 1
                                     }
                                 }
