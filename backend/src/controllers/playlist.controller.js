@@ -201,6 +201,30 @@ const getPlaylistById = asyncHandler(async(req,res)=>{
                 },
 
                 {
+                    $lookup: {
+                        from: "users",
+                        localField: "owner",
+                        foreignField: "_id",
+                        as: "owner"
+                    }
+                },
+
+                {
+                    $unwind: {
+                        path: "$owner",
+                        preserveNullAndEmptyArrays: true
+                    }
+                },
+
+                {
+                    $project: {
+                        "owner.password": 0,
+                        "owner.refreshToken": 0,
+                        "owner.email": 0
+                    }
+                },
+
+                {
                     $project: {
                         order: 0,
                         __v: 0 // __v is Mongoose's version key. after each save() __v increments

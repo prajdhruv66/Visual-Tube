@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import { Plus, Pencil, Trash2, X, ListVideo } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -17,6 +17,9 @@ import { FullPageSpinner } from '@/components/ui/Spinner';
 import { ErrorState } from '@/components/feedback/ErrorState';
 import { EmptyState } from '@/components/feedback/EmptyState';
 import { VideoCard } from '@/components/media/VideoCard';
+import { Avatar } from '@/components/ui/Avatar';
+import { Badge } from '@/components/ui/Badge';
+import { formatDuration, formatRelativeTime, formatViews } from '@/utils/format';
 import { getErrorMessage } from '@/services/api/apiClient';
 
 export default function PlaylistDetailsPage() {
@@ -77,19 +80,61 @@ export default function PlaylistDetailsPage() {
           onAction={() => setIsAddOpen(true)}
         />
       ) : (
-        <div className="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {playlist.videos.map((video) => (
-            <div key={video._id} className="group relative">
-              <VideoCard video={video} />
-              <button
-                onClick={() => removeVideo.mutate(video._id)}
-                aria-label="Remove from playlist"
-                className="absolute right-2 top-2 rounded-full bg-black/70 p-1.5 text-white opacity-0 transition-opacity hover:bg-black/90 group-hover:opacity-100 focus:opacity-100"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          ))}
+        <div className="flex flex-col gap-4 divide-y divide-border">
+          {playlist.videos.map((video) => {
+            const owner = typeof video.owner === 'string' ? null : video.owner;
+            return (
+              <div key={video._id} className="group relative flex flex-col gap-4 py-4 first:pt-0 last:pb-0 sm:flex-row">
+                <Link
+                  to={`/watch/${video._id}`}
+                  className="relative block aspect-video w-full shrink-0 overflow-hidden rounded-lg bg-surface-2 sm:w-64 md:w-80"
+                >
+                  <img
+                    src={video.thumbnail}
+                    alt={video.title}
+                    loading="lazy"
+                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                  />
+                  <Badge className="absolute bottom-2 right-2 z-10">{formatDuration(video.duration)}</Badge>
+                </Link>
+
+                <div className="flex flex-1 flex-col pr-12 min-w-0">
+                  <Link to={`/watch/${video._id}`}>
+                    <h3 className="line-clamp-2 text-base font-semibold leading-snug text-text-primary group-hover:text-accent-text">
+                      {video.title}
+                    </h3>
+                  </Link>
+
+                  {video.description && (
+                    <p className="mt-1 line-clamp-2 text-sm text-text-secondary">
+                      {video.description}
+                    </p>
+                  )}
+
+                  <p className="mt-1 font-mono text-[11px] text-text-tertiary">
+                    {formatViews(video.views)} · {formatRelativeTime(video.createdAt)}
+                  </p>
+
+                  {owner && (
+                    <Link to={`/channel/${owner.username}`} className="mt-3 flex items-center gap-2 hover:opacity-80">
+                      <Avatar src={owner.avatar} alt={owner.fullname} size="xs" />
+                      <span className="truncate text-xs font-medium text-text-secondary">
+                        {owner.fullname} <span className="text-text-tertiary">@{owner.username}</span>
+                      </span>
+                    </Link>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => removeVideo.mutate(video._id)}
+                  aria-label="Remove from playlist"
+                  className="absolute right-2 top-4 rounded-full p-2 text-text-secondary hover:bg-surface-3 hover:text-text-primary opacity-0 transition-opacity focus:opacity-100 group-hover:opacity-100 sm:top-1/2 sm:-translate-y-1/2"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
 

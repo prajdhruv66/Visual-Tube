@@ -11,3 +11,13 @@ Thumbs.db
 
 # IDE
 .vscode/
+
+# Seed Workspace temporary files
+.seed-workspace/temp/*
+!.seed-workspace/temp/.gitkeep
+.seed-workspace/logs/*
+!.seed-workspace/logs/.gitkeep
+.seed-workspace/metadata-cache/*
+!.seed-workspace/metadata-cache/.gitkeep
+.seed-workspace/reports/*
+!.seed-workspace/reports/.gitkeep
