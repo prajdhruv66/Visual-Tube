@@ -119,16 +119,26 @@ const login = asyncHandler(async(req,res)=>{
     const {accessToken,refreshToken} = await generateAccessAndRefreshTokens(logedInuser._id);
 
     // 6. send refresh token and access token to cookie and finally send response
-    const option = { // makes cookie unmodifiable and secure
-        httpOnly:true,
-        secure:false,
-        sameSite:"lax"
+    // Set maxAge to align browser cookie expiration with JWT token expiration.
+    // Without maxAge, cookies default to session-only and are deleted when the browser is closed.
+    const accessTokenOption = {
+        httpOnly: true,
+        secure: false,
+        sameSite: "lax",
+        maxAge: 24 * 60 * 60 * 1000 // 1 day
+    }
+
+    const refreshTokenOption = {
+        httpOnly: true,
+        secure: false,
+        sameSite: "lax",
+        maxAge: 10 * 24 * 60 * 60 * 1000 // 10 days
     }
 
     // why sending response: for mobile application...
     res.status(200)
-    .cookie("accessToken",accessToken,option)
-    .cookie("refreshToken",refreshToken,option)
+    .cookie("accessToken",accessToken,accessTokenOption)
+    .cookie("refreshToken",refreshToken,refreshTokenOption)
     .json(
         new ApiResponse(
             200,
@@ -192,15 +202,25 @@ const regenerateTokens = asyncHandler(async(req,res)=>{
         
         const {accessToken, refreshToken} = await generateAccessAndRefreshTokens(user._id)
         
-        const option = {
-            httpOnly:true,
-            secure:false,
-            sameSite:"lax"
+        // Set maxAge to align browser cookie expiration with JWT token expiration.
+        // Without maxAge, cookies default to session-only and are deleted when the browser is closed.
+        const accessTokenOption = {
+            httpOnly: true,
+            secure: false,
+            sameSite: "lax",
+            maxAge: 24 * 60 * 60 * 1000 // 1 day
+        }
+
+        const refreshTokenOption = {
+            httpOnly: true,
+            secure: false,
+            sameSite: "lax",
+            maxAge: 10 * 24 * 60 * 60 * 1000 // 10 days
         }
     
         return res.status(200)
-                    .cookie("accessToken",accessToken,option)
-                    .cookie("refreshToken",refreshToken,option)
+                    .cookie("accessToken",accessToken,accessTokenOption)
+                    .cookie("refreshToken",refreshToken,refreshTokenOption)
                     .json(
                         new ApiResponse(200,
                             {accessToken,refreshToken},

@@ -152,6 +152,7 @@ const getVideoById = asyncHandler(async(req,res)=>{
                 thumbnail:1,
                 duration:1,
                 views:1,
+                isPublished:1,
                 owner:'$ownerDetails',
                 likesCount:{$size:'$videoLikes'},
                 isLiked:{

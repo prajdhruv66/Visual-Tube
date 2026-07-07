@@ -67,6 +67,7 @@ const recommendedPipeline = ({
                     thumbnail: 1,          // Thumbnail URL
                     duration: 1,           // Video duration
                     views: 1,              // View count
+                    isPublished: 1,        // Publication status
                     createdAt: 1,          // Upload date
                     likesCount: 1,         //likesCount
                     owner: 1               // username, avatar, subscribersCount and fullname
