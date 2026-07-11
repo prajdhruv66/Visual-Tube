@@ -1,7 +1,7 @@
 import redis from "../config/redis.config.js";
 
 class RedisService {
-        #initialized = false;
+        #initialized = false; // flag to check if redis is already connected/initialized
     connect() {
 
         if (this.#initialized) return;
