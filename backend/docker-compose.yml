@@ -1,0 +1,15 @@
+services:
+  redis:          # <-- Service name
+    image: redis:7-alpine
+    container_name: vt_redis_container
+
+    ports:
+      - "6379:6379"
+
+    command: ["redis-server", "--appendonly", "yes"]
+
+    volumes:
+      - visual-tube-cache:/data
+
+volumes:
+  visual-tube-cache:
