@@ -8,6 +8,7 @@ import { User } from "../models/user.model.js";
 import { Like } from "../models/likes.model.js";
 import recommendedPipeline from "../pipelines/personlised.pipeline.js";
 import { getAllVideoPipeline } from "../pipelines/getAllVideo.pipeline.js";
+import redis from "../config/redis.config.js";
 
 const uploadVideo = asyncHandler(async(req,res)=>{
 
@@ -87,91 +88,139 @@ const uploadVideo = asyncHandler(async(req,res)=>{
     }
 })
 
-const getVideoById = asyncHandler(async(req,res)=>{
+const getVideoById = asyncHandler(async (req, res) => {
 
-    // 1. get video_id form params | check if video_id is not empty
-    // 2. get video from db with appropriate projection and populate owner details
-    // 3. validate if video is not empty 
-    // 4. return response
-    const video_id = req.params.videoId
+    const video_id = req.params.videoId;
+
+    if (!video_id)
+        throw new ApiError(400, "Video id is required.");
+
+    if (!mongoose.Types.ObjectId.isValid(video_id))
+        throw new ApiError(400, "Invalid video id.");
+
+    // ---------------- Parallel operations ----------------
+    const [cachedVideo, likedDoc, likesCount] = await Promise.all([
+        redis.get(`video:${video_id}`),
+
+        Like.exists({
+            video: video_id,
+            likedBy: req.user._id
+        }),
+
+        Like.countDocuments({
+            video: video_id
+        })
+    ]);
+
+    const isLiked = !!likedDoc;
+
+    // ================= CACHE HIT =================
+
+    if (cachedVideo) {
+
+        const videoData = JSON.parse(cachedVideo);
+
+        videoData.likesCount = likesCount;
+
+        return res.status(200).json(
+            new ApiResponse(
+                200,
+                {
+                    videoData,
+                    isLiked
+                },
+                "Video fetched successfully."
+            )
+        );
+    }
+
+    // ================= CACHE MISS =================
 
     const video_stats = await Video.aggregate([
         {
-            $match : {_id:new mongoose.Types.ObjectId(video_id)}
+            $match: {
+                _id: new mongoose.Types.ObjectId(video_id)
+            }
         },
         {
-            $lookup:{
-                from:'users',
-                localField:'owner',
-                foreignField:'_id',
-                as:'ownerDetails',
-                // can make seprate pipeline to fetch subscribersCount|subscribedToCount etc...
-                pipeline:[
+            $lookup: {
+                from: "users",
+                localField: "owner",
+                foreignField: "_id",
+                as: "ownerDetails",
+                pipeline: [
                     {
-                       $lookup:{
-                        from:'subscriptions',
-                        localField:'_id',
-                        foreignField:'channel',
-                        as:'subscribers'
-                       }
-                    },
-                    {
-                        $addFields:{
-                            subscriberCount:{$size:'$subscribers'}
+                        $lookup: {
+                            from: "subscriptions",
+                            localField: "_id",
+                            foreignField: "channel",
+                            as: "subscribers"
                         }
                     },
                     {
-                        $project:{
-                            username:1,
-                            avatar:1,
-                            fullname:1,
-                            subscribersCount:"$subscriberCount",
+                        $addFields: {
+                            subscriberCount: {
+                                $size: "$subscribers"
+                            }
+                        }
+                    },
+                    {
+                        $project: {
+                            username: 1,
+                            fullname: 1,
+                            avatar: 1,
+                            subscribersCount: "$subscriberCount"
                         }
                     }
                 ]
             }
         },
         {
-            $unwind:'$ownerDetails'
+            $unwind: "$ownerDetails"
         },
         {
-            $lookup:{
-                from:'likes',
-                localField:'_id',
-                foreignField:'video',
-                as:'videoLikes'
-            }
-        },
-        {
-            $project:{
-                _id:1,
-                title:1,
-                description:1,
-                tags:1,
-                videoFile:1,
-                thumbnail:1,
-                duration:1,
-                views:1,
-                isPublished:1,
-                owner:'$ownerDetails',
-                likesCount:{$size:'$videoLikes'},
-                isLiked:{
-                    $cond:{
-                        if:{$in:[req.user?._id,'$videoLikes.likedBy']},
-                        then:true,
-                        else:false
-                    }
-                }
+            $project: {
+                _id: 1,
+                title: 1,
+                description: 1,
+                tags: 1,
+                videoFile: 1,
+                thumbnail: 1,
+                duration: 1,
+                views: 1,
+                isPublished: 1,
+                owner: "$ownerDetails"
             }
         }
-    ])
+    ]);
 
-    if(!video_stats.length) throw new ApiError(404,"video not found");
-    
+    if (!video_stats.length)
+        throw new ApiError(404, "Video not found.");
+
+    const videoData = video_stats[0];
+
+    videoData.likesCount = likesCount;
+
+    // Cache static/shared metadata
+    await redis.set(
+        `video:${video_id}`,
+        JSON.stringify(videoData),
+        {
+            EX: 60 * 30 // 30 minutes
+        }
+    );
+
     return res.status(200).json(
-        new ApiResponse(200,video_stats[0],"Video fetched Successfully!")
-    )
-})
+        new ApiResponse(
+            200,
+            {
+                videoData,
+                isLiked
+            },
+            "Video fetched successfully."
+        )
+    );
+});
 
 const watchVideo = asyncHandler(async (req, res) => {
     const videoId = req.params?.videoId;
@@ -284,45 +333,48 @@ const updateThumbnail = asyncHandler(async(req,res)=>{
 
 // 7. Return the updated video.
 
-const videoId = req.params.videoId;
-if(!videoId) throw new ApiError(404,"Cannot get vidoeId from param")
+    const videoId = req.params.videoId;
+    if(!videoId) throw new ApiError(404,"Cannot get vidoeId from param")
 
-const thumbnailPath = req.file?.path
-if(!thumbnailPath) throw new ApiError(400,"please upload thumbnail first")
+    const thumbnailPath = req.file?.path
+    if(!thumbnailPath) throw new ApiError(400,"please upload thumbnail first")
 
-    //find()=> returns array || findOne()=> return one document or null
-const video = await Video.findOne({_id:videoId, owner:req.user?._id});
-if(!video) throw new ApiError(404,"Cannot find video")
+        //find()=> returns array || findOne()=> return one document or null
+    const video = await Video.findOne({_id:videoId, owner:req.user?._id});
+    if(!video) throw new ApiError(404,"Cannot find video")
 
-let oldThumbnail = video.thumbnail;
-oldThumbnail = oldThumbnail.split("/").pop().split(".")[0]
+    let oldThumbnail = video.thumbnail;
+    oldThumbnail = oldThumbnail.split("/").pop().split(".")[0]
 
-const newThumbnailResponse = await uploadOnCloudinary(thumbnailPath);
-if(!(newThumbnailResponse?.url)) throw new ApiError(500,"Cannot ulpoad new thumbnail")
+    const newThumbnailResponse = await uploadOnCloudinary(thumbnailPath);
+    if(!(newThumbnailResponse?.url)) throw new ApiError(500,"Cannot ulpoad new thumbnail")
 
 
-if (!mongoose.Types.ObjectId.isValid(videoId)) {
-    throw new ApiError(400, "Invalid video ID");
-}
-const dbUpdateResponse = await Video.findByIdAndUpdate(videoId,
-                                    {thumbnail:newThumbnailResponse.url},
-                                    {
-                                        returnDocument:'after',
-                                    }
-                                ).select("_id title owner").populate("owner","username")
-if(!dbUpdateResponse) {
-    const deleteNewThumbnail = await deleteFromCloudinary(newThumbnailResponse.url.split("/").pop().split(".")[0])
-    if(!deleteNewThumbnail) throw new ApiError(500,"Cannot update db and delete old thumbnail");
+    if (!mongoose.Types.ObjectId.isValid(videoId)) {
+        throw new ApiError(400, "Invalid video ID");
+    }
+    const dbUpdateResponse = await Video.findByIdAndUpdate(videoId,
+                                        {thumbnail:newThumbnailResponse.url},
+                                        {
+                                            returnDocument:'after',
+                                        }
+                                    ).select("_id title owner").populate("owner","username")
+    if(!dbUpdateResponse) {
+        const deleteNewThumbnail = await deleteFromCloudinary(newThumbnailResponse.url.split("/").pop().split(".")[0])
+        if(!deleteNewThumbnail) throw new ApiError(500,"Cannot update db and delete old thumbnail");
 
-    throw new ApiError(500,"Cannot update video with new thumbnail")
-}
+        throw new ApiError(500,"Cannot update video with new thumbnail")
+    }
 
-const deleteOldThumbnail = await deleteFromCloudinary(oldThumbnail)
-if(!deleteOldThumbnail) console.error("Failed to delete old thumbnail from Cloudinary");
+    const deleteOldThumbnail = await deleteFromCloudinary(oldThumbnail)
+    if(!deleteOldThumbnail) console.error("Failed to delete old thumbnail from Cloudinary");
 
-return res.status(200).json(
-    new ApiResponse(200,dbUpdateResponse)
-)
+    const deleteRedis = await redis.del(`video:${videoId}`);
+    if(deleteRedis===0) console.log(`Cannot Invalidate from cache...`);
+
+    return res.status(200).json(
+        new ApiResponse(200,dbUpdateResponse)
+    )
 
 
 })
@@ -376,10 +428,12 @@ const updateVideoDetial = asyncHandler(async(req,res)=>{
     .select("_id title description tags owner")
     .populate("owner", "username");
 
-if (!updatedVideo) {
-    throw new ApiError(404, "cannot update video details || not owner || video not found");
-}
+    if (!updatedVideo) {
+        throw new ApiError(404, "cannot update video details || not owner || video not found");
+    }
 
+    const deleteRedis = await redis.del(`video:${videoId}`);
+    if(deleteRedis===0) console.log(`Cannot Invalidate from cache...`);
 
     return res.status(200).json(
         new ApiResponse(200,updatedVideo,"video Details updated successfully")
@@ -415,6 +469,9 @@ const toggleIsPublish = asyncHandler(async(req,res)=>{
 
     if(!toggleResponse) throw new ApiError(404,"Cannot find video || you are not owner");
 
+    const deleteRedis = await redis.del(`video:${videoId}`);
+    if(deleteRedis===0) console.log(`Cannot Invalidate from cache...`);
+
     return res.status(200).json(
         new ApiResponse(200,toggleResponse,"isPublished toggled")
     )
@@ -423,21 +480,32 @@ const toggleIsPublish = asyncHandler(async(req,res)=>{
 const deleteVideo = asyncHandler(async(req,res)=>{
     const videoId = req.params.videoId;
     if(!videoId) throw new ApiError(404,"Cannot find videoId")
-
     if(!mongoose.Types.ObjectId.isValid(videoId)) throw new ApiError(400,"Invalid videoId")
 
     const deletedResponse = await Video.findOneAndDelete({_id:videoId, owner:req.user?._id}) // always returns deleted doc
     if(!deletedResponse) throw new ApiError(404, "video not found | you're not the owner")
 
-    const videoDeleteFromCloudinary = await deleteFromCloudinary(deletedResponse.videoFile.split("/").pop().split(".")[0]);
-    const thumbnailDeletedFromCloudinary = await deleteFromCloudinary(deletedResponse.thumbnail.split("/").pop().split(".")[0])
 
-    if(!videoDeleteFromCloudinary || !thumbnailDeletedFromCloudinary) console.error("Cannot delete video/thumbnail from cloudinary")
+    try {
+        await Promise.all([
+            await deleteFromCloudinary(deletedResponse.videoFile.split("/").pop().split(".")[0]),
+            await deleteFromCloudinary(deletedResponse.thumbnail.split("/").pop().split(".")[0])
+        ])
+    } catch (error) {
+        console.log(`Cannot delete from cloudinary : \n${error}`)
+    }
+    try {
+        await Promise.all([
+            redis.del(`video:${videoId}`),
+            redis.del(`views:${videoId}`)
+        ])
+    } catch (error) {
+        console.log(`Redis video invalidation failed\n${error}`)
+    }
 
     return res.status(200).json(
         new ApiResponse(200,deletedResponse,"Video Deleted Sucessfully...")
     )
-
     
 })
 

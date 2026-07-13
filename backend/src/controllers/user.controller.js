@@ -6,6 +6,9 @@ import {ApiResponse} from '../utils/apiResponse.js'
 import jwt from 'jsonwebtoken'
 import mongoose from "mongoose";
 import getWatchedHistoryVideosPipeline from '../pipelines/watchHistory.pipeline.js'
+import redis from "../config/redis.config.js";
+import { Subscription } from "../models/subscription.model.js";
+import { response } from "express";
 
 const userRegister = asyncHandler(async(req,res)=>{
     // 1. get user details of user from frontend
@@ -423,71 +426,46 @@ const updateCoverImage = asyncHandler(async(req,res)=>{
 })
 
 const getUserChannelProfile = asyncHandler(async(req,res)=>{
-    const {username} = req.params
-    if(!username) throw new ApiError(400,"Username is missing")
+    const {channelId} = req.params
+    if(!channelId) throw new ApiError(400,"Username is missing");
+    if(!mongoose.Types.ObjectId.isValid(channelId)) throw new ApiError(400,"Invalid channelId");
 
-    const channel = await User.aggregate([
-    {
-        $match:{
-            username:username?.toLowerCase()
-        }
-    },
-    {
-        $lookup:{
-            from:"subscriptions",
-            localField:"_id",
-            foreignField:"channel",
-            as:"subscribers"
-        }
-    },
-    {
-        $lookup:{
-            from:"subscriptions",
-            localField:"_id",
-            foreignField:"subscriber",
-            as:"subscribedTo"
-        }
-    },
-    {
-        // $addFields is used to add fields on result temporarily
-        $addFields:{
-            subscriberCount:{
-                $size:"$subscribers"
-            },
-            channelsSubscribedToCount:{
-                $size:"$subscribedTo"
-            },
-            isSubscribed:{
-                $cond:{
-                    if:{$in : [req.user?._id,"$subscribers.subscriber"]}, // checks if user(with _id) is in collection's(Subscriber) subscriber field
-                    then : true,
-                    else: false
-                }
-            }
-        }
-    },
-    {   //$project is used to reshape the documents 
-        //— meaning you decide which fields to keep, remove, rename, or create in the final output.
-        $project:{
-            username:1,
-            fullname:1,
-            avatar:1,
-            coverImage:1,
-            subscribersCount:"$subscriberCount",
-            channelsSubscribedToCount:1,
-            isSubscribed:1,
-            email:1
-        }
+    let {channelProfile, subscriberCount, isSubscribed} = await Promise.all([
+        redis.get(`channelProfile:${username}`),
+        Subscription.countDocuments({channel:channelId}),
+        Subscription.findOne({subscriber:req.user._id, channel:channelId})
+    ])
+
+    if(subscriberCount===undefined || isSubscribed===undefined) throw new ApiError(404,"subscriberCount or isSubscribed not found !");
+    isSubscribed = !!isSubscribed;
+    
+    // ========================== Cache hit =================================
+    if(Redischannel){
+
+            return res.status(200).json(
+                new ApiResponse(200, 
+                    {channelProfile,
+                    subscriberCount,
+                    isSubscribed},
+                    "User channel profiled fetched"))
+
+        
     }
-])
+    
+    // ============================ Cache miss ==================================
 
-if(!channel?.length ) throw ApiError(404,"Channel doesn't exist...")
+    channelProfile = await User.findOne({_id:channelId}).select('-password -watchHistory -refreshToken -email')
+    if(!channelProfile ) throw ApiError(404,"Channel doesn't exist...")
 
-console.log(`Channel details: ${channel}`)
+    await redis.set(`channel:${channelProfile._id}`, JSON.stringify(channel), {EX:1800});
 
-return res.status(200).json(
-    new ApiResponse(200,channel[0],"user Channel profile fetched successfully")
-)
+
+    return res.status(200).json(
+                    new ApiResponse(200, 
+                    {channelProfile,
+                    subscriberCount,
+                    isSubscribed},
+                    "User channel profiled fetched"));
 
     
 })
