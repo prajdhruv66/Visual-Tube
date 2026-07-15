@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { useRegisterWatch } from '../hooks/useRegisterWatch';
 
@@ -10,18 +10,34 @@ interface VideoPlayerProps {
   onWatchRegistered?: () => void;
 }
 
-/**
- * Plays whatever URL/format the backend returns (mp4, webm, mkv, ...)
- * without inspecting the file extension — the browser's <video> element
- * negotiates playback support on its own. If a format truly isn't
- * supported by the viewer's browser, we show a friendly fallback instead
- * of a blank/broken player.
- */
 export function VideoPlayer({ videoId, src, poster, title, onWatchRegistered }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [hasError, setHasError] = useState(false);
+  const prevSrcRef = useRef(src);
 
   useRegisterWatch(videoId, videoRef, onWatchRegistered);
+
+  useEffect(() => {
+    if (prevSrcRef.current !== src) {
+      const videoElement = videoRef.current;
+      if (videoElement) {
+        const currentTime = videoElement.currentTime;
+        const isPlaying = !videoElement.paused;
+        
+        prevSrcRef.current = src;
+
+        const handleLoadedMetadata = () => {
+          videoElement.currentTime = currentTime;
+          if (isPlaying) {
+            videoElement.play().catch((err) => console.log('Auto-play failed after source change:', err));
+          }
+          videoElement.removeEventListener('loadedmetadata', handleLoadedMetadata);
+        };
+
+        videoElement.addEventListener('loadedmetadata', handleLoadedMetadata);
+      }
+    }
+  }, [src]);
 
   if (hasError) {
     return (
@@ -46,7 +62,7 @@ export function VideoPlayer({ videoId, src, poster, title, onWatchRegistered }: 
       preload="metadata"
       aria-label={title}
       onError={() => setHasError(true)}
-      className="aspect-video w-full rounded-lg bg-black"
+      className="aspect-video w-full rounded-lg bg-black shadow-lg"
     />
   );
 }

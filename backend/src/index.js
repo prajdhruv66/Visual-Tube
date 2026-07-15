@@ -11,6 +11,7 @@ let server;
 connect_mongodb()
 .then(async()=>{
 
+    await import("./workers/video.worker.js");
     server = app.listen(process.env.PORT || 8000,()=>{
         console.log(`app is connected localhost:${process.env.PORT || 8000}`);
     })

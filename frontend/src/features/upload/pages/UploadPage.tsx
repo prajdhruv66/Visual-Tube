@@ -105,11 +105,17 @@ export default function UploadPage() {
         />
 
         {isUploading && (
-          <div className="flex flex-col gap-1.5">
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-3">
-              <div className="h-full bg-accent transition-all" style={{ width: `${progress}%` }} />
+          <div className="flex flex-col gap-2 p-3.5 rounded-lg bg-surface-2 border border-border mt-2">
+            <div className="flex justify-between items-center text-xs font-semibold text-text-secondary">
+              <span>{progress === 100 ? 'Processing video on server...' : 'Uploading video file...'}</span>
+              <span className="font-mono">{progress}%</span>
             </div>
-            <span className="font-mono text-xs text-text-tertiary">{progress}% uploaded</span>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-surface-3">
+              <div 
+                className={`h-full transition-all duration-300 ${progress === 100 ? 'bg-green-500 animate-pulse' : 'bg-accent'}`} 
+                style={{ width: `${progress}%` }} 
+              />
+            </div>
           </div>
         )}
 

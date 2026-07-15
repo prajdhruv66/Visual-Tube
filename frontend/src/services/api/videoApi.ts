@@ -46,6 +46,7 @@ export const videoApi = {
     return unwrap<Video>(
       apiClient.post('/videos/', form, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 300_000, // 5 minutes timeout for video upload
         ...withUploadProgress(onProgress),
       })
     );
@@ -66,6 +67,7 @@ export const videoApi = {
     return unwrap<Video>(
       apiClient.patch(`/videos/${videoId}/thumbnail`, form, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 120_000, // 2 minutes timeout for thumbnail update
         ...withUploadProgress(onProgress),
       })
     );

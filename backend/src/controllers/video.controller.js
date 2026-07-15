@@ -9,9 +9,9 @@ import { Like } from "../models/likes.model.js";
 import recommendedPipeline from "../pipelines/personlised.pipeline.js";
 import { getAllVideoPipeline } from "../pipelines/getAllVideo.pipeline.js";
 import redis from "../config/redis.config.js";
+import { videoQueue } from "../queue/video.queue.js";
 
 const uploadVideo = asyncHandler(async(req,res)=>{
-
     // 1. Get video and thumbnail files from multer
     const video = req.files?.video?.[0]
     const thumbnail = req.files?.thumbnail?.[0]
@@ -37,7 +37,6 @@ const uploadVideo = asyncHandler(async(req,res)=>{
     let savedThumbnail = null
 
     try{
-
         // 6. Upload video and thumbnail to Cloudinary
         savedVideo = await uploadOnCloudinary(video.path)
         savedThumbnail = await uploadOnCloudinary(thumbnail.path)
@@ -55,41 +54,53 @@ const uploadVideo = asyncHandler(async(req,res)=>{
             duration:savedVideo.duration,
             owner:req.user._id,
             videoFile:savedVideo.url,
-            thumbnail:savedThumbnail.url
+            thumbnail:savedThumbnail.url,
+            processingStatus: "queued"
         })
 
         // 9. Check database creation
         if(!finalVideo)
             throw new ApiError(500,"Cannot store video information")
 
-        // 10. Fetch created video with owner details
+        // 10. Add job to video queue for processing
+        await videoQueue.add("process-video", { videoId: finalVideo._id });
+
+        // 11. Fetch created video with owner details
         const response = await Video.findById(finalVideo._id)
             .populate("owner","username avatar")
 
-        // 11. Return uploaded video response
-        return res.status(201).json(
+        // Cache the newly created video in Redis to avoid Atlas database roundtrips during transcoding
+        try {
+            await redis.set(
+                `video:${finalVideo._id}`,
+                JSON.stringify(response),
+                "EX",
+                1800
+            );
+            console.log(`Cached newly created video:${finalVideo._id} in Redis`);
+        } catch (cacheErr) {
+            console.error("Failed to cache newly created video in Redis:", cacheErr);
+        }
+
+        // 12. Return uploaded video response
+        return res.status(202).json(
             new ApiResponse(
-                201,
+                202,
                 response,
-                "Video uploaded successfully"
+                "Video upload accepted and queued for processing"
             )
         )
-
     }catch(error){
-
-        // 12. Delete already uploaded files if database/cloudinary process fails
+        // 13. Delete already uploaded files if database/cloudinary process fails
         if(savedVideo?.public_id)
             await deleteFromCloudinary(savedVideo.public_id)
-
         if(savedThumbnail?.public_id)
             await deleteFromCloudinary(savedThumbnail.public_id)
-
         throw new ApiError(500, error?.message || "Something went wrong while uploading video")
     }
 })
 
 const getVideoById = asyncHandler(async (req, res) => {
-
     const video_id = req.params.videoId;
 
     if (!video_id)
@@ -117,16 +128,14 @@ const getVideoById = asyncHandler(async (req, res) => {
     // ================= CACHE HIT =================
 
     if (cachedVideo) {
-
         const videoData = JSON.parse(cachedVideo);
-
         videoData.likesCount = likesCount;
 
         return res.status(200).json(
             new ApiResponse(
                 200,
                 {
-                    videoData,
+                    ...videoData,
                     isLiked
                 },
                 "Video fetched successfully."
@@ -189,7 +198,9 @@ const getVideoById = asyncHandler(async (req, res) => {
                 duration: 1,
                 views: 1,
                 isPublished: 1,
-                owner: "$ownerDetails"
+                owner: "$ownerDetails",
+                processingStatus: 1,
+                availableResolutions: 1
             }
         }
     ]);
@@ -198,23 +209,27 @@ const getVideoById = asyncHandler(async (req, res) => {
         throw new ApiError(404, "Video not found.");
 
     const videoData = video_stats[0];
-
     videoData.likesCount = likesCount;
 
     // Cache static/shared metadata
-    await redis.set(
-        `video:${video_id}`,
-        JSON.stringify(videoData),
-        {
-            EX: 60 * 30 // 30 minutes
-        }
-    );
+    try {
+        await redis.set(
+            `video:${video_id}`,
+            JSON.stringify(videoData),
+            "EX",
+            1800
+        );
+    } catch (cacheErr) {
+        console.error("Failed to cache video in Redis in getVideoById:", cacheErr);
+    }
+
+    const videoDataObj = typeof videoData.toObject === 'function' ? videoData.toObject() : videoData;
 
     return res.status(200).json(
         new ApiResponse(
             200,
             {
-                videoData,
+                ...videoDataObj,
                 isLiked
             },
             "Video fetched successfully."
@@ -223,7 +238,7 @@ const getVideoById = asyncHandler(async (req, res) => {
 });
 
 const watchVideo = asyncHandler(async (req, res) => {
-    const videoId = req.params?.videoId;
+    const { videoId } = req.params;
     const userId = req.user?._id;
     
     console.log("watchVideo called - videoId:", videoId, "userId:", userId);
@@ -236,7 +251,7 @@ const watchVideo = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Invalid videoId");
     }
 
-    const session = await mongoose.startSession(); // transaction is used in production => all db call passes or all fails...
+    const session = await mongoose.startSession();
     try {
         session.startTransaction();
 
@@ -248,7 +263,7 @@ const watchVideo = asyncHandler(async (req, res) => {
             },
             {
                 returnDocument: "after",
-                session // used to tell that this db call belongs to this transaction
+                session
             }
         ).select("_id title views");
 
@@ -305,41 +320,12 @@ const watchVideo = asyncHandler(async (req, res) => {
 });
 
 const updateThumbnail = asyncHandler(async(req,res)=>{
-// Method: PATCH
-// Route: /videos/:videoId/edit-thumbnail
-
-// 1. Get videoId from params and validate it.
-
-// 2. Get thumbnail from req.file.
-//    - If missing → ApiError(400).
-
-// 3. Fetch video document.
-//    - If not found → 404.
-//    - Verify req.user is the owner.
-//    - Save old thumbnail URL (or publicId).
-
-// 4. Upload the new thumbnail to Cloudinary.
-//    - If upload fails → ApiError(500).
-
-// 5. Update video.thumbnail in the database.
-//    - If update fails:
-//        - Delete the newly uploaded thumbnail from Cloudinary.
-//        - Throw ApiError(500).
-
-// 6. Delete the old thumbnail from Cloudinary.
-//    - If deletion fails:
-//        - Log the error (recommended).
-//        - Do not fail the request because the DB already points to the new thumbnail.
-
-// 7. Return the updated video.
-
     const videoId = req.params.videoId;
     if(!videoId) throw new ApiError(404,"Cannot get vidoeId from param")
 
     const thumbnailPath = req.file?.path
     if(!thumbnailPath) throw new ApiError(400,"please upload thumbnail first")
 
-        //find()=> returns array || findOne()=> return one document or null
     const video = await Video.findOne({_id:videoId, owner:req.user?._id});
     if(!video) throw new ApiError(404,"Cannot find video")
 
@@ -348,7 +334,6 @@ const updateThumbnail = asyncHandler(async(req,res)=>{
 
     const newThumbnailResponse = await uploadOnCloudinary(thumbnailPath);
     if(!(newThumbnailResponse?.url)) throw new ApiError(500,"Cannot ulpoad new thumbnail")
-
 
     if (!mongoose.Types.ObjectId.isValid(videoId)) {
         throw new ApiError(400, "Invalid video ID");
@@ -375,15 +360,10 @@ const updateThumbnail = asyncHandler(async(req,res)=>{
     return res.status(200).json(
         new ApiResponse(200,dbUpdateResponse)
     )
-
-
 })
 
 const updateVideoDetial = asyncHandler(async(req,res)=>{
-    // method - PATCH | route - /video/:videoId/edit-video-detail
-
     const {title,description,tags} = req.body
-    // At least one field must be provided
     if (
         title === undefined &&
         description === undefined &&
@@ -392,7 +372,6 @@ const updateVideoDetial = asyncHandler(async(req,res)=>{
         throw new ApiError(400, "At least one field is required");
     }
 
-    // If provided, it must not be empty
     if (title !== undefined && title.trim() === "") {
         throw new ApiError(400, "Title cannot be empty");
     }
@@ -410,7 +389,7 @@ const updateVideoDetial = asyncHandler(async(req,res)=>{
     if(!mongoose.Types.ObjectId.isValid(videoId)) throw new ApiError(400,"Invalid videoId..")
 
     const updateFields = {
-    ...(title !== undefined && { title }), // ...(field) means updateFields.field = field; | shortner syntax
+    ...(title !== undefined && { title }),
     ...(description !== undefined && { description }),
     ...(tags !== undefined && { tags })
     };
@@ -418,7 +397,7 @@ const updateVideoDetial = asyncHandler(async(req,res)=>{
     const updatedVideo = await Video.findOneAndUpdate(
         {
             _id: videoId,
-            owner: req.user._id // ownership check
+            owner: req.user._id
         },
         updateFields,
         {
@@ -438,34 +417,22 @@ const updateVideoDetial = asyncHandler(async(req,res)=>{
     return res.status(200).json(
         new ApiResponse(200,updatedVideo,"video Details updated successfully")
     )
-
 })
 
 const toggleIsPublish = asyncHandler(async(req,res)=>{
     const videoId = req.params.videoId;
     if(!videoId) throw new ApiError(400,"videoId is required")
 
-    // checks whether the value has the correct format for a MongoDB ObjectId.
     if(!mongoose.Types.ObjectId.isValid(videoId)) throw new ApiError(400,"Invalid Video id")
 
     const toggleResponse = await Video.findOneAndUpdate({_id:videoId, owner:req.user?._id},
-        [{ // pipeline update concept
+        [{
             $set:{
                 isPublished:{$not:'$isPublished'}
             }
         }],
         {returnDocument:'after'}
     ).populate("owner","username").select("_id owner isPublished title")
-    //output format
-//    {
-//     "_id": "v123",
-//     "title": "MongoDB Aggregation",
-//     "isPublished": false,
-//     "owner": {
-//     "_id": "u456",
-//     "username": "griffith"
-//             }
-//     }
 
     if(!toggleResponse) throw new ApiError(404,"Cannot find video || you are not owner");
 
@@ -482,9 +449,8 @@ const deleteVideo = asyncHandler(async(req,res)=>{
     if(!videoId) throw new ApiError(404,"Cannot find videoId")
     if(!mongoose.Types.ObjectId.isValid(videoId)) throw new ApiError(400,"Invalid videoId")
 
-    const deletedResponse = await Video.findOneAndDelete({_id:videoId, owner:req.user?._id}) // always returns deleted doc
+    const deletedResponse = await Video.findOneAndDelete({_id:videoId, owner:req.user?._id})
     if(!deletedResponse) throw new ApiError(404, "video not found | you're not the owner")
-
 
     try {
         await Promise.all([
@@ -506,7 +472,6 @@ const deleteVideo = asyncHandler(async(req,res)=>{
     return res.status(200).json(
         new ApiResponse(200,deletedResponse,"Video Deleted Sucessfully...")
     )
-    
 })
 
 const getVideoFeed = asyncHandler(async (req, res) => {
@@ -548,7 +513,6 @@ const getPersonalisedVideos = asyncHandler(async (req, res) => {
     const page = Math.max(Number(req.query.page) || 1, 1);
     const limit = Math.min(Number(req.query.limit)||10,50);
 
-    // Get last 5 watched videos with their tags
     const recentVideos = await User.aggregate([
         {
             $match: {
@@ -586,7 +550,6 @@ const getPersonalisedVideos = asyncHandler(async (req, res) => {
         }
     ]);
 
-    // If user has no watch history
     if (!recentVideos.length || !recentVideos[0].recentVideos.length) {
         return res.status(200).json(
             new ApiResponse(

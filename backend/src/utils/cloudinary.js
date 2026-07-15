@@ -19,18 +19,20 @@ const uploadOnCloudinary = async (localFilePath)=>{
     try {
         if(!localFilePath) return null
 
-        //upoading file on cloudinary from public temp
-        const response = await cloudinary.uploader.upload(localFilePath,{
-            resource_type:"auto"
-        })
-        console.log("File has been uploaded to cloudinary \n response:",response.url)
+        // Uploading file on Cloudinary with standard upload and 10 minutes timeout
+        const response = await cloudinary.uploader.upload(localFilePath, {
+            resource_type: "auto",
+            timeout: 600000 // 10 minutes timeout
+        });
+
+        console.log("File has been uploaded to cloudinary \n response:", response.url)
         fs.unlinkSync(localFilePath);
         return response
         
     } catch (error) {
-        console.error("Cloudinary upload error:", error.message);
+        console.error("Cloudinary upload error:", error.message || error);
         if (fs.existsSync(localFilePath)) {
-            fs.unlinkSync(localFilePath) // unlink or delete files as failed to upload and in sync way as we don't wanna move forward without delete
+            fs.unlinkSync(localFilePath) // Delete local file on failure
         }
         return null;
     }
@@ -42,7 +44,7 @@ const deleteFromCloudinary = async (publicUrl)=>{
 
         const response = await cloudinary.uploader.destroy(publicUrl, 
         {
-        invalidate: true
+            invalidate: true
         })
         console.log("response while deteting file: ",response)
         return response

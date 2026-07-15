@@ -37,6 +37,12 @@ export interface Video {
   updatedAt: string;
   likesCount?: number;
   isLiked?: boolean;
+  processingStatus?: 'queued' | 'processing' | 'published' | 'failed';
+  availableResolutions?: Array<{
+    resolution: string;
+    url: string;
+    public_id?: string;
+  }>;
 }
 
 export interface Comment {

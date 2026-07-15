@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ThumbsUp } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -9,6 +9,7 @@ import { useChannelProfile } from '@/features/channel/hooks/useChannelProfile';
 import { CommentSection } from '../components/CommentSection';
 import { RecommendedList } from '../components/RecommendedList';
 import { VideoPlayer } from '../components/VideoPlayer';
+import { ProcessingVideo } from '../components/ProcessingVideo';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { FullPageSpinner } from '@/components/ui/Spinner';
@@ -24,6 +25,22 @@ export default function WatchPage() {
   const queryClient = useQueryClient();
   const { data: video, isLoading, isError, error, refetch, invalidate } = useVideo(videoId);
   const [showFullDescription, setShowFullDescription] = useState(false);
+  const [activeUrl, setActiveUrl] = useState('');
+  const [selectedResolution, setSelectedResolution] = useState('');
+
+  useEffect(() => {
+    if (video) {
+      const resolutions = video.availableResolutions || [];
+      if (resolutions.length > 0) {
+        const defaultRes = resolutions[resolutions.length - 1];
+        setActiveUrl(defaultRes.url);
+        setSelectedResolution(defaultRes.resolution);
+      } else {
+        setActiveUrl(video.videoFile);
+        setSelectedResolution('Original');
+      }
+    }
+  }, [video]);
   
   const handleWatchRegistered = () => {
     console.log("handleWatchRegistered called - invalidating and refetching history");
@@ -42,6 +59,10 @@ export default function WatchPage() {
   if (isLoading) return <FullPageSpinner />;
   if (isError || !video) return <ErrorState message={getErrorMessage(error, 'Video not found.')} onRetry={() => refetch()} />;
 
+  if (video.processingStatus !== 'published') {
+    return <ProcessingVideo status={video.processingStatus} />;
+  }
+
   const isOwnVideo = user?._id === (owner?._id ?? video.owner);
   const channel = channelQuery.data;
 
@@ -50,7 +71,7 @@ export default function WatchPage() {
       <div className="min-w-0">
         <VideoPlayer
           videoId={video._id}
-          src={video.videoFile}
+          src={activeUrl || video.videoFile}
           poster={video.thumbnail}
           title={video.title}
           onWatchRegistered={handleWatchRegistered}
@@ -75,6 +96,32 @@ export default function WatchPage() {
           )}
 
           <div className="flex items-center gap-2">
+            {video.availableResolutions && video.availableResolutions.length > 0 && (
+              <div className="flex items-center gap-2 mr-2">
+                <span className="text-xs font-semibold text-text-secondary">Quality:</span>
+                <select
+                  value={selectedResolution}
+                  onChange={(e) => {
+                    const res = e.target.value;
+                    setSelectedResolution(res);
+                    if (res === 'Original') {
+                      setActiveUrl(video.videoFile);
+                    } else {
+                      const found = video.availableResolutions?.find(r => r.resolution === res);
+                      if (found) setActiveUrl(found.url);
+                    }
+                  }}
+                  className="rounded-md border border-border bg-surface-2 px-2 py-1 text-xs font-semibold text-text-primary shadow-sm outline-none focus:border-accent hover:bg-surface-3 transition-colors cursor-pointer"
+                >
+                  {video.availableResolutions.map((res) => (
+                    <option key={res.resolution} value={res.resolution}>
+                      {res.resolution}
+                    </option>
+                  ))}
+                  <option value="Original">Original</option>
+                </select>
+              </div>
+            )}
             {!isOwnVideo && owner && (
               <Button
                 variant={channel?.isSubscribed ? 'secondary' : 'primary'}

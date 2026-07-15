@@ -426,48 +426,52 @@ const updateCoverImage = asyncHandler(async(req,res)=>{
 })
 
 const getUserChannelProfile = asyncHandler(async(req,res)=>{
-    const {channelId} = req.params
-    if(!channelId) throw new ApiError(400,"Username is missing");
-    if(!mongoose.Types.ObjectId.isValid(channelId)) throw new ApiError(400,"Invalid channelId");
+    const { username } = req.params;
+    if(!username?.trim()) throw new ApiError(400, "Username is missing");
 
-    let {channelProfile, subscriberCount, isSubscribed} = await Promise.all([
-        redis.get(`channelProfile:${username}`),
-        Subscription.countDocuments({channel:channelId}),
-        Subscription.findOne({subscriber:req.user._id, channel:channelId})
-    ])
+    // 1. Check Redis for cached user document
+    const cachedUser = await redis.get(`channelProfile:${username.toLowerCase()}`);
+    let channelProfile;
 
-    if(subscriberCount===undefined || isSubscribed===undefined) throw new ApiError(404,"subscriberCount or isSubscribed not found !");
-    isSubscribed = !!isSubscribed;
-    
-    // ========================== Cache hit =================================
-    if(Redischannel){
-
-            return res.status(200).json(
-                new ApiResponse(200, 
-                    {channelProfile,
-                    subscriberCount,
-                    isSubscribed},
-                    "User channel profiled fetched"))
-
+    if (cachedUser) {
+        channelProfile = JSON.parse(cachedUser);
+    } else {
+        // Cache miss: find user document by username
+        channelProfile = await User.findOne({ username: username.toLowerCase() })
+            .select('-password -watchHistory -refreshToken -email');
         
+        if (!channelProfile) {
+            throw new ApiError(404, "Channel doesn't exist...");
+        }
+
+        // Save to Redis cache for 30 minutes
+        await redis.set(
+            `channelProfile:${username.toLowerCase()}`,
+            JSON.stringify(channelProfile),
+            "EX",
+            1800
+        );
     }
-    
-    // ============================ Cache miss ==================================
 
-    channelProfile = await User.findOne({_id:channelId}).select('-password -watchHistory -refreshToken -email')
-    if(!channelProfile ) throw ApiError(404,"Channel doesn't exist...")
+    // 2. Fetch subscriber details using the channel owner's ID
+    const [subscriberCount, isSubscribedDoc] = await Promise.all([
+        Subscription.countDocuments({ channel: channelProfile._id }),
+        Subscription.findOne({ subscriber: req.user._id, channel: channelProfile._id })
+    ]);
 
-    await redis.set(`channel:${channelProfile._id}`, JSON.stringify(channel), {EX:1800});
-
+    const profileObj = typeof channelProfile.toObject === 'function' ? channelProfile.toObject() : channelProfile;
 
     return res.status(200).json(
-                    new ApiResponse(200, 
-                    {channelProfile,
-                    subscriberCount,
-                    isSubscribed},
-                    "User channel profiled fetched"));
-
-    
+        new ApiResponse(
+            200, 
+            {
+                ...profileObj,
+                subscribersCount: subscriberCount,
+                isSubscribed: !!isSubscribedDoc
+            },
+            "User channel profile fetched successfully"
+        )
+    );
 })
 
 const getWatchHistory = asyncHandler(async (req, res) => {
@@ -496,7 +500,6 @@ const getWatchHistory = asyncHandler(async (req, res) => {
         )
     );
 });
-
 
 export { userRegister , login, logout, regenerateTokens, changeCurrentPassword, getUser, updateAccountDetail, updateAvatar, updateCoverImage
     ,getUserChannelProfile, getWatchHistory

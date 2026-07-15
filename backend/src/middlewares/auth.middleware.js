@@ -9,7 +9,6 @@ const verifyJwt = asyncHandler( async (req,_,next)=>{
     try {
         // 1. get access token from cookie (cookie-parser) or Authorization header
         const token = req.cookies?.accessToken || req.header("Authorization")?.replace("Bearer ", "");
-        console.log("token", token)
 
         // 2. check if there's token in cookie or header
         if(!token){ throw new ApiError(400, "Unauthorized request") }
@@ -23,7 +22,7 @@ const verifyJwt = asyncHandler( async (req,_,next)=>{
         // 5. check if user exist and if yes => put it into request body
         if(!user) throw new ApiError(401,"Invalid access token")
         req.user =user
-    next()
+        next()
 
     } catch (error) {
         throw new ApiError(401, error?.message || "Invalid access token")
