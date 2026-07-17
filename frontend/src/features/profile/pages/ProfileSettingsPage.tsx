@@ -45,6 +45,10 @@ export default function ProfileSettingsPage() {
   const onAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Avatar must be under 5MB');
+      return;
+    }
     try {
       const updated = await updateAvatar.mutateAsync({ file, onProgress: setAvatarProgress });
       setUser(updated);
@@ -59,6 +63,10 @@ export default function ProfileSettingsPage() {
   const onCoverChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Cover image must be under 5MB');
+      return;
+    }
     try {
       const updated = await updateCoverImage.mutateAsync({ file, onProgress: setCoverProgress });
       setUser(updated);

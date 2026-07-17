@@ -24,21 +24,50 @@ const uploadOnCloudinary = async (localFilePath)=>{
         const fileSizeInBytes = stats.size;
         const fileSizeInMB = fileSizeInBytes / (1024 * 1024);
 
+        const maxRetries = 3;
+        let attempt = 0;
         let response;
-        if (fileSizeInMB > 10) {
-            console.log(`File size is ${fileSizeInMB.toFixed(2)}MB (> 10MB). Using upload_large for chunked upload...`);
-            response = await cloudinary.uploader.upload_large(localFilePath, {
-                resource_type: "auto",
-                chunk_size: 10 * 1024 * 1024, // 10MB chunk size
-                timeout: 600000 // 10 minutes timeout
-            });
-        } else {
-            console.log(`File size is ${fileSizeInMB.toFixed(2)}MB (<= 10MB). Using standard upload...`);
-            // Uploading file on Cloudinary with standard upload and 10 minutes timeout
-            response = await cloudinary.uploader.upload(localFilePath, {
-                resource_type: "auto",
-                timeout: 600000 // 10 minutes timeout
-            });
+
+        while (attempt < maxRetries) {
+            try {
+                attempt++;
+                if (fileSizeInMB > 10) {
+                    console.log(`[Attempt ${attempt}/${maxRetries}] File size is ${fileSizeInMB.toFixed(2)}MB (> 10MB). Using upload_large for chunked upload...`);
+                    response = await new Promise((resolve, reject) => {
+                        cloudinary.uploader.upload_large(localFilePath, {
+                            resource_type: "auto",
+                            chunk_size: 5 * 1024 * 1024, // 5MB chunk size (more reliable under unstable network conditions)
+                            timeout: 600000 // 10 minutes timeout
+                        }, (error, result) => {
+                            if (error) {
+                                reject(error);
+                            } else {
+                                resolve(result);
+                            }
+                        });
+                    });
+                } else {
+                    console.log(`[Attempt ${attempt}/${maxRetries}] File size is ${fileSizeInMB.toFixed(2)}MB (<= 10MB). Using standard upload...`);
+                    // Uploading file on Cloudinary with standard upload and 10 minutes timeout
+                    response = await cloudinary.uploader.upload(localFilePath, {
+                        resource_type: "auto",
+                        timeout: 600000 // 10 minutes timeout
+                    });
+                }
+                // Break out of the retry loop if successful
+                break;
+            } catch (error) {
+                console.warn(`[Attempt ${attempt}/${maxRetries}] Cloudinary upload attempt failed. Error: ${error.message || error}`);
+                
+                if (attempt >= maxRetries) {
+                    throw error;
+                }
+                
+                // Exponential backoff: 2s, 4s
+                const delay = attempt * 2000;
+                console.log(`Retrying in ${delay / 1000}s...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
         }
 
         console.log("File has been uploaded to cloudinary \n response:", response.url)
@@ -46,7 +75,7 @@ const uploadOnCloudinary = async (localFilePath)=>{
         return response
         
     } catch (error) {
-        console.error("Cloudinary upload error:", error.message || error);
+        console.error("Cloudinary upload error after all attempts:", error.message || error);
         if (fs.existsSync(localFilePath)) {
             fs.unlinkSync(localFilePath) // Delete local file on failure
         }

@@ -94,6 +94,10 @@ export default function EditVideoPage() {
   const onThumbnailChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Thumbnail must be under 10MB');
+      return;
+    }
     try {
       await updateThumbnail.mutateAsync({ file, onProgress: setThumbnailProgress });
       toast.success('Thumbnail updated.');

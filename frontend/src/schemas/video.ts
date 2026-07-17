@@ -8,11 +8,13 @@ export const uploadVideoSchema = z.object({
   video: z
     .instanceof(FileList)
     .refine((files) => files.length === 1, 'A video file is required')
-    .refine((files) => files.length === 0 || files[0].type.startsWith('video/'), 'File must be a video'),
+    .refine((files) => files.length === 0 || files[0].type.startsWith('video/'), 'File must be a video')
+    .refine((files) => files.length === 0 || files[0].size <= 100 * 1024 * 1024, 'Video must be under 100MB'),
   thumbnail: z
     .instanceof(FileList)
     .refine((files) => files.length === 1, 'A thumbnail image is required')
-    .refine((files) => files.length === 0 || files[0].type.startsWith('image/'), 'Thumbnail must be an image'),
+    .refine((files) => files.length === 0 || files[0].type.startsWith('image/'), 'Thumbnail must be an image')
+    .refine((files) => files.length === 0 || files[0].size <= 10 * 1024 * 1024, 'Thumbnail must be under 10MB'),
 });
 export type UploadVideoFormValues = z.infer<typeof uploadVideoSchema>;
 
