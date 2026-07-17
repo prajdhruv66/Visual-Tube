@@ -43,12 +43,8 @@ export default function WatchPage() {
   }, [video]);
   
   const handleWatchRegistered = () => {
-    console.log("handleWatchRegistered called - invalidating and refetching history");
     invalidate();
-    // Explicitly refetch the history query when watch is registered
-    queryClient.refetchQueries({ queryKey: ['history'] }).then(() => {
-      console.log("History refetch completed");
-    });
+    queryClient.refetchQueries({ queryKey: ['history'] });
   };
 
   const owner = video && typeof video.owner !== 'string' ? video.owner : null;
@@ -96,32 +92,31 @@ export default function WatchPage() {
           )}
 
           <div className="flex items-center gap-2">
-            {video.availableResolutions && video.availableResolutions.length > 0 && (
-              <div className="flex items-center gap-2 mr-2">
-                <span className="text-xs font-semibold text-text-secondary">Quality:</span>
-                <select
-                  value={selectedResolution}
-                  onChange={(e) => {
-                    const res = e.target.value;
-                    setSelectedResolution(res);
-                    if (res === 'Original') {
-                      setActiveUrl(video.videoFile);
-                    } else {
-                      const found = video.availableResolutions?.find(r => r.resolution === res);
-                      if (found) setActiveUrl(found.url);
-                    }
-                  }}
-                  className="rounded-md border border-border bg-surface-2 px-2 py-1 text-xs font-semibold text-text-primary shadow-sm outline-none focus:border-accent hover:bg-surface-3 transition-colors cursor-pointer"
-                >
-                  {video.availableResolutions.map((res) => (
-                    <option key={res.resolution} value={res.resolution}>
-                      {res.resolution}
-                    </option>
-                  ))}
-                  <option value="Original">Original</option>
-                </select>
-              </div>
-            )}
+            <div className="flex items-center gap-2 mr-2">
+              <span className="text-xs font-semibold text-text-secondary">Quality:</span>
+              <select
+                value={selectedResolution}
+                onChange={(e) => {
+                  const res = e.target.value;
+                  setSelectedResolution(res);
+                  if (res === 'Original') {
+                    setActiveUrl(video.videoFile);
+                  } else {
+                    const found = video.availableResolutions?.find(r => r.resolution === res);
+                    if (found) setActiveUrl(found.url);
+                  }
+                }}
+                className="rounded-md border border-border bg-surface-2 px-2 py-1 text-xs font-semibold text-text-primary shadow-sm outline-none focus:border-accent hover:bg-surface-3 transition-colors cursor-pointer"
+              >
+                {(video.availableResolutions || []).map((res) => (
+                  <option key={res.resolution} value={res.resolution}>
+                    {res.resolution}
+                  </option>
+                ))}
+                <option value="Original">Original</option>
+              </select>
+            </div>
+
             {!isOwnVideo && owner && (
               <Button
                 variant={channel?.isSubscribed ? 'secondary' : 'primary'}
@@ -131,6 +126,7 @@ export default function WatchPage() {
                 {channel?.isSubscribed ? 'Subscribed' : 'Subscribe'}
               </Button>
             )}
+
             <Button
               variant="outline"
               onClick={() => likeMutation.mutate()}

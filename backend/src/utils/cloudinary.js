@@ -19,11 +19,27 @@ const uploadOnCloudinary = async (localFilePath)=>{
     try {
         if(!localFilePath) return null
 
-        // Uploading file on Cloudinary with standard upload and 10 minutes timeout
-        const response = await cloudinary.uploader.upload(localFilePath, {
-            resource_type: "auto",
-            timeout: 600000 // 10 minutes timeout
-        });
+        // Check file size using fs.statSync
+        const stats = fs.statSync(localFilePath);
+        const fileSizeInBytes = stats.size;
+        const fileSizeInMB = fileSizeInBytes / (1024 * 1024);
+
+        let response;
+        if (fileSizeInMB > 10) {
+            console.log(`File size is ${fileSizeInMB.toFixed(2)}MB (> 10MB). Using upload_large for chunked upload...`);
+            response = await cloudinary.uploader.upload_large(localFilePath, {
+                resource_type: "auto",
+                chunk_size: 10 * 1024 * 1024, // 10MB chunk size
+                timeout: 600000 // 10 minutes timeout
+            });
+        } else {
+            console.log(`File size is ${fileSizeInMB.toFixed(2)}MB (<= 10MB). Using standard upload...`);
+            // Uploading file on Cloudinary with standard upload and 10 minutes timeout
+            response = await cloudinary.uploader.upload(localFilePath, {
+                resource_type: "auto",
+                timeout: 600000 // 10 minutes timeout
+            });
+        }
 
         console.log("File has been uploaded to cloudinary \n response:", response.url)
         fs.unlinkSync(localFilePath);
@@ -34,7 +50,7 @@ const uploadOnCloudinary = async (localFilePath)=>{
         if (fs.existsSync(localFilePath)) {
             fs.unlinkSync(localFilePath) // Delete local file on failure
         }
-        return null;
+        throw error;
     }
 }
 

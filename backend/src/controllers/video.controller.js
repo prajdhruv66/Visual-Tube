@@ -82,6 +82,8 @@ const uploadVideo = asyncHandler(async(req,res)=>{
             console.error("Failed to cache newly created video in Redis:", cacheErr);
         }
 
+        await clearFeedCache();
+
         // 12. Return uploaded video response
         return res.status(202).json(
             new ApiResponse(
@@ -439,6 +441,8 @@ const toggleIsPublish = asyncHandler(async(req,res)=>{
     const deleteRedis = await redis.del(`video:${videoId}`);
     if(deleteRedis===0) console.log(`Cannot Invalidate from cache...`);
 
+    await clearFeedCache();
+
     return res.status(200).json(
         new ApiResponse(200,toggleResponse,"isPublished toggled")
     )
@@ -469,6 +473,8 @@ const deleteVideo = asyncHandler(async(req,res)=>{
         console.log(`Redis video invalidation failed\n${error}`)
     }
 
+    await clearFeedCache();
+
     return res.status(200).json(
         new ApiResponse(200,deletedResponse,"Video Deleted Sucessfully...")
     )
@@ -480,6 +486,28 @@ const getVideoFeed = asyncHandler(async (req, res) => {
     const page = Math.max(Number(req.query.page) || 1, 1);
     const limit = Math.min(Number(req.query.limit) || 10, 50);
 
+    const cacheKey = `feed:mode=${mode || ''}:search=${search || ''}:channelId=${channelId || ''}:page=${page}:limit=${limit}:userId=${req.user?._id || 'guest'}`;
+
+    try {
+        const cachedFeed = await redis.get(cacheKey);
+        if (cachedFeed) {
+            const feedData = JSON.parse(cachedFeed);
+            return res.status(200).json(
+                new ApiResponse(
+                    200,
+                    {
+                        ...feedData,
+                        page,
+                        limit
+                    },
+                    "Video feed fetched successfully."
+                )
+            );
+        }
+    } catch (cacheErr) {
+        console.error("Redis read failed in getVideoFeed:", cacheErr);
+    }
+
     const feedPipeline = getAllVideoPipeline({
         limit,
         page,
@@ -490,12 +518,19 @@ const getVideoFeed = asyncHandler(async (req, res) => {
     });
 
     const videos = await Video.aggregate(feedPipeline);
+    const resultFeed = videos[0] || { totalVideos: 0, videos: [] };
+
+    try {
+        await redis.set(cacheKey, JSON.stringify(resultFeed), "EX", 300); // cache for 5 minutes
+    } catch (cacheErr) {
+        console.error("Redis write failed in getVideoFeed:", cacheErr);
+    }
 
     return res.status(200).json(
         new ApiResponse(
             200,
             {
-                ...videos[0],
+                ...resultFeed,
                 page,
                 limit
             },
@@ -680,5 +715,17 @@ const getVideoLikes = asyncHandler(async (req, res) => {
         )
     );
 });
+
+const clearFeedCache = async () => {
+    try {
+        const keys = await redis.keys("feed:*");
+        if (keys.length > 0) {
+            await redis.del(keys);
+            console.log(`Cleared ${keys.length} feed cache keys from Redis`);
+        }
+    } catch (err) {
+        console.error("Failed to clear feed cache in Redis:", err);
+    }
+};
 
 export {uploadVideo, getVideoById, watchVideo, updateThumbnail, updateVideoDetial, toggleIsPublish, deleteVideo, getVideoFeed, getPersonalisedVideos, getVideoLikes}

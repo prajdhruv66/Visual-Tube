@@ -1,6 +1,7 @@
 import { Router } from "express";  
 import { upload } from "../middlewares/multer.middleware.js"; 
 import { verifyJwt } from "../middlewares/auth.middleware.js";
+import { rateLimiter } from "../middlewares/rateLimiter.middleware.js";
 import { uploadVideo, 
         getVideoById, 
         watchVideo, 
@@ -15,7 +16,9 @@ import { uploadVideo,
 
 const videoRouter = Router()
 
-videoRouter.route('/').post(verifyJwt,
+videoRouter.route('/').post(
+            verifyJwt,
+            rateLimiter('upload', 5, 3600), // max 5 uploads per hour
             upload.fields([{name:'video',maxCount:1}, {name:'thumbnail',maxCount:1}]),
             uploadVideo)
 

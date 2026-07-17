@@ -12,12 +12,13 @@ import { login,
  } from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJwt } from "../middlewares/auth.middleware.js";
+import { rateLimiter } from "../middlewares/rateLimiter.middleware.js";
 
 console.log("USER ROUTER LOADED")
 const userRouter = Router()
 
 userRouter.route('/register').post(
-    // multer instance is used as middleware and .fields helps to upload multiple files with different fieldNames
+    rateLimiter('register', 3, 60), // max 3 registrations per minute
     upload.fields([
         {
             name: "avatar",
@@ -30,7 +31,10 @@ userRouter.route('/register').post(
     ]),
     userRegister)
 
-userRouter.route('/login').post(login)
+userRouter.route('/login').post(
+    rateLimiter('login', 5, 60), // max 5 logins per minute
+    login
+)
 
 //secured routes
 userRouter.route("/logout").post(verifyJwt,  logout)

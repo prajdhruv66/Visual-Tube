@@ -10,6 +10,7 @@ import PlaylistRouter from './routes/playlist.routes.js'
 
 const app = express()
 
+
 // all the middlewares
 app.use(cors({origin : process.env.CORS_ORIGIN, credentials:true})) // checks origin of request is allowed ...
 app.use(express.static('public')) // keeps public data like svgs,img etc
@@ -24,6 +25,12 @@ app.use("/api/v1/subscription", SubscriptionRouter)
 app.use("/api/v1/comments",commentRouter)
 app.use("/api/v1/like",likeRouter)
 app.use("/api/v1/playlist",PlaylistRouter)
+
+app.get("/", (req, res) => {
+    res.json({
+        message: "Visual-Tube Backend Running"
+    });
+});
 
 // global error handler middleware
 app.use((err, req, res, next) => {

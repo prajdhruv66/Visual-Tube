@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 import path from "node:path";
 import fs from "node:fs";
 
-import connect_mongodb from "../../src/db/index.js";
+import connect_mongodb from "../../src/config/index.js";
 import { User } from "../../src/models/user.model.js";
 import { Video } from "../../src/models/video.model.js";
 import { Comment } from "../../src/models/comment.model.js";
@@ -244,33 +244,27 @@ async function main() {
                     const prefixes = ["", "Ultimate", "Mastering", "Understanding", "Deep Dive:", "Step-by-Step Guide:", "Essentials of", "Advanced"];
                     const suffixes = ["", "Explained Simply", "Crash Course", "for Beginners", "| Masterclass", "(2026 Tutorial)", "in 5 Minutes"];
                     const title = `${pickRandom(prefixes)} ${topic.title} ${pickRandom(suffixes)}`.trim().replace(/\s+/g, " ");
-
                     const descPrefixes = ["Check out my new video!", "In this lesson, we cover this important topic.", "Here is a complete breakdown of this concept.", "A beginner-friendly guide."];
-                    const descSuffixes = ["Hope you find this helpful. Don't forget to subscribe!", "Support the channel by liking this video.", "Let me know your thoughts in the comments."];
-                    const description = `${pickRandom(descPrefixes)} ${topic.description} ${pickRandom(descSuffixes)}`;
-
-                    // Save Video document (views set to intentionally low 20-500, FR-12)
-                    const videoObj = await Video.create({
-                        videoFile: media.videoFile,
-                        thumbnail: media.thumbnail,
+                    const video = await Video.create({
                         title,
-                        description,
-                        duration: randInt(180, 600), // 3 to 10 mins
-                        views: randInt(CONFIG.MIN_VIEWS, CONFIG.MAX_VIEWS),
-                        isPublished: true,
+                        description: `${pickRandom(descPrefixes)} ${topic.title}.`,
+                        thumbnail: media.thumbnail,
+                        videoFile: media.videoFile,
+                        duration: randInt(60, 600),
+                        views: randInt(100, 5000),
                         owner: creator._id,
-                        tags: topic.tags,
+                        tags: topic.tags || [],
+                        processingStatus: "published",
+                        availableResolutions: []
                     });
-                    createdVideoIds.push(videoObj._id);
-                    videoObj.category = creatorInfo.category;
-                    videoObj.commentTemplates = topic.commentTemplates;
-
-                    videos.push(videoObj);
-                    creatorVideos.push(videoObj);
+                    createdVideoIds.push(video._id);
+                    video.category = creatorInfo.category;
+                    video.commentTemplates = topic.commentTemplates || [];
+                    creatorVideos.push(video);
+                    videos.push(video);
                 }
 
-                // F. Generate 3-4 Playlists per creator (contains only niche-related videos)
-                const playlistCount = randInt(3, 4);
+                const playlistCount = Math.min(creatorInfo.topics.length, 3);
                 for (let pIdx = 0; pIdx < playlistCount; pIdx++) {
                     const topic = creatorInfo.topics[pIdx % creatorInfo.topics.length];
                     const matchingVideos = creatorVideos.filter(v => v.title.includes(topic.title));
